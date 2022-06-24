@@ -45,8 +45,6 @@ private:
   long long int relative_pc = 0;
   std::shared_ptr<Registers> regs_state = nullptr;
   std::vector<FunctionOffset> fn_backtrace;
-  std::vector<long long int> pc_backtrace;
-  std::vector<long long int> sp_backtrace;
   std::vector<unsigned long long int> call_param;
   pid_t child_pid = -1;
   void set_registers(std::shared_ptr<Registers> regs);

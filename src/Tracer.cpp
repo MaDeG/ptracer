@@ -60,10 +60,9 @@ Tracer::Tracer(const char* program,
                char const* const* args,
                bool follow_children,
                bool follow_threads,
-               bool ptrace_jail,
-               bool no_backtrace) : _program(program),
-                                    _args(args),
-                                    _attach_callback(nullptr) {
+               bool ptrace_jail) : _program(program),
+							                     _args(args),
+                                   _attach_callback(nullptr) {
 	assert(program != nullptr);
 	assert(!strncmp(_args[0], _program, PATH_MAX));
 	this->_traced_executable = string(program);
@@ -80,7 +79,6 @@ Tracer::Tracer(const char* program,
 		// Send a SIGKILL if the tracer process dies.
 		this->_ptrace_options |= PTRACE_O_EXITKILL;
 	}
-	this->_no_backtrace = no_backtrace;
 	this->_running = false;
 	this->_attached = false;
 }
@@ -111,7 +109,6 @@ Tracer::Tracer(const char* program, const char* const* args) : _program(program)
  * @param follow_children If True also the child processes of the tracee will be traced.
  * @param follow_threads  If True also the child Threads of the tracee will be traced.
  * @param ptrace_jail     If True in case of a Tracer crash the Tracee will be automatically killed by ptrace.
- * @param no_backtrace    If true libunwind will not be used and a syscall will be identified by PC and SP.
  * @param container_id    If not empty it will be used to translate the retrieved PIDs to the host namespace
  * @param callback        A function that will be called just after being attached to the tracee.
 */
@@ -120,7 +117,6 @@ Tracer::Tracer(const string executable_name,
                bool follow_children,
                bool follow_threads,
                bool ptrace_jail,
-               bool no_backtrace,
                function<void ()> callback) : _attach_callback (callback) {
 	assert(!executable_name.empty());
 	assert(spid > 0 && spid < MAX_PID);
@@ -142,7 +138,6 @@ Tracer::Tracer(const string executable_name,
 		// Send a SIGKILL if the tracer process dies.
 		this->_ptrace_options |= PTRACE_O_EXITKILL;
 	}
-	this->_no_backtrace = no_backtrace;
 }
 
 /**
@@ -156,7 +151,6 @@ Tracer::Tracer(const string executable_name,
 Tracer::Tracer(const Tracer& tracer, const int pid, const int spid) : _traced_executable(tracer._traced_executable),
                                                                       _program(tracer._program),
                                                                       _args(tracer._args),
-                                                                      _no_backtrace(tracer._no_backtrace),
                                                                       _ptrace_options(tracer._ptrace_options),
                                                                       _attach_callback(nullptr) {
 	assert(pid > 0 && pid < Tracer::MAX_PID);
@@ -168,21 +162,6 @@ Tracer::Tracer(const Tracer& tracer, const int pid, const int spid) : _traced_ex
 	this->_traced_spid = spid;
 	this->_running = true;
 	this->_attached = true;
-	this->_address_space = unw_create_addr_space(&_UPT_accessors, 0);
-	this->_info = (UPT_info*) _UPT_create(this->_traced_spid);
-}
-
-/**
- * The Tracer destructor must manually destroy the libunwind process information.
- */
-Tracer::~Tracer() {
-	cout << "Tracer of PID " << this->_traced_pid << " SPID: " << this->_traced_spid << " is being deleted" << endl;
-	if (this->_address_space != nullptr) {
-		unw_destroy_addr_space(this->_address_space);
-	}
-	if (this->_info != nullptr) {
-		_UPT_destroy(this->_info);
-	}
 }
 
 /**
@@ -452,14 +431,6 @@ int Tracer::init(int status) {
 			}
 		} while (!WIFSTOPPED(status) || (WSTOPSIG(status) != SIGSTOP && WSTOPSIG(status) != SIGTRAP));
 	}
-	if (this->_address_space == nullptr && (this->_address_space = unw_create_addr_space(&_UPT_accessors, 0)) == nullptr) {
-		cerr << "Error while initialising the libunwind address space";
-		return Tracer::UNWIND_ERROR;
-	}
-	if (this->_info == nullptr && (this->_info = (UPT_info*) _UPT_create(this->_traced_spid)) == nullptr) {
-		cerr << "Error during libunwind initialisation";
-		return Tracer::UNWIND_ERROR;
-	}
 	if (this->_ptrace_options < 0) {
 		// Tracer::set_options() will take care of the following part when called
 		cout << "Tracer for SPID " << this->_traced_spid << " set options deferred" << endl;
@@ -491,9 +462,8 @@ int Tracer::init(int status) {
  * @param follow_children If specified every generated children (generation of a new PID) will be traced.
  * @param follow_threads  If specified every generated thread (generation of a new SPID, same PID) will be traced.
  * @param ptrace_jail     If specified when the tracer dies a SIGKILL is delivered to the tracee.
- * @param no_backtrace    If true libunwind will not be used and a syscall will be identified by PC and SP.
  */
-void Tracer::set_options(bool follow_children, bool follow_threads, bool ptrace_jail, bool no_backtrace) {
+void Tracer::set_options(bool follow_children, bool follow_threads, bool ptrace_jail) {
 	assert(this->_ptrace_options < 0);
 	// Set stop signal that we will receive to: SIGTRAP | 0x80 and receive a notification just before the tracee exit
 	this->_ptrace_options = PTRACE_O_TRACESYSGOOD | PTRACE_O_TRACEEXIT | PTRACE_O_TRACEEXEC;
@@ -509,7 +479,6 @@ void Tracer::set_options(bool follow_children, bool follow_threads, bool ptrace_
 		// Send a SIGKILL if the tracer process dies.
 		this->_ptrace_options |= PTRACE_O_EXITKILL;
 	}
-	this->_no_backtrace = no_backtrace;
 }
 
 /**
@@ -727,7 +696,6 @@ int Tracer::handle_special_cases(int status, shared_ptr<Registers> regs) {
  * @param status The status variable of the waitpid call that have received the sysentry notification.
  * @return Returns: Tracer::WAIT_FOR_AUTHORISATION if the Tracee is still alive and will produce at least another notification.
  *                  Tracer::PTRACE_ERROR if a ptrace error occurred while trying to retrieve the tracee registers.
- *                  Tracer::UNWIND_ERROR if an error occurred while trying to retrieve the syscall backtrace.
  */
 int Tracer::systemcall_entry(int status, shared_ptr<Registers> regs) {
 	assert(this->_running);
@@ -754,9 +722,6 @@ int Tracer::systemcall_entry(int status, shared_ptr<Registers> regs) {
 	}
 	this->_current_state->relative_pc = (long long int) (regs->pc() - this->_pc_base_addr);
 	this->_current_state->set_registers(regs);
-	if (this->get_backtrace()) {
-		return Tracer::UNWIND_ERROR;
-	}
 	// Since after an execve authorisation will not be possible anymore to retrieve the target program we need
 	// to extract it during the syscall entry and eventually overwrite it if this execve fails.
 	if (this->_current_state->nsyscall == SYS_execve) {
@@ -867,90 +832,6 @@ int Tracer::syscall_jump(shared_ptr<Registers> regs) {
 	}
 	cout << "Jumped syscall number: " << regs->nsyscall() << " Return value: " << regs->ret_arg() << " SPID: " << this->_traced_spid << endl;
 	return 0;
-}
-
-/**
- * This acquires the child stack trace of the tracee which for each stack frame includes:
- * function name + offset, stack frame pointer, instruction pointer.
- * If the Stack base pointer has not been already defined it sets it with the address of the first stack
- * frame of this syscall.
- * This function assumes that get_registers() has been already called.
- * Since not all the backtrack function names can be retrieved an error of that kind will not imply that
- * a Tracer::UNWIND_ERROR will be returned.
- * 
- * @return 0 if the backtrace acquisition was successful.
- *         Tracer::UNWIND_ERROR if a libunwind error occurred.
- */
-int Tracer::get_backtrace() {
-	assert(this->_running);
-	assert(this->_attached);
-	assert(this->_traced_pid > 0 && this->_traced_pid < Tracer::MAX_PID);
-	assert(this->_traced_spid > 0 && this->_traced_spid < Tracer::MAX_PID);
-	assert(this->_current_state != nullptr);
-	assert(this->_current_state->regs_state != nullptr);
-	assert(this->_current_state->sp_backtrace.empty());
-	assert(this->_current_state->pc_backtrace.empty());
-	assert(this->_pc_base_addr > 0);
-	unw_cursor_t it;
-	char function_name[MAX_FUNCTION_NAME_LENGTH];
-	unw_word_t sp, offset, pc = 0;
-	int return_value = 0;
-	if (unw_init_remote(&it, this->_address_space, this->_info)) {
-		cerr << "Error during the remote cursor initialisation for remote unwinding" << endl;
-		return Tracer::UNWIND_ERROR;
-	}
-	if (unw_get_reg(&it, UNW_REG_IP, &pc) != UNW_ESUCCESS) {
-		cerr << "Error during call backtrace retrieval: impossible to retrieve the instruction pointer" << endl;
-		return_value = Tracer::UNWIND_ERROR;
-	}
-	if (pc != this->_current_state->regs_state->pc()) {
-		cout << "Expected program counter: " << this->_current_state->regs_state->pc() << endl;
-		cout << "Retrieved by libunwind: " << pc << endl;
-		if ((long long int) (this->_pc_base_addr - pc) < 0) {
-			cout << "Detected a libunwind problem, the expected value will be used" << endl;
-		} else {
-			cout << "Error! Both program counters may be valid, abort!" << endl;
-			return Tracer::UNWIND_ERROR;
-		}
-	}
-	if (this->_no_backtrace) {
-		this->_current_state->pc_backtrace.push_back(this->_current_state->relative_pc);
-	}
-	if (unw_get_reg(&it, UNW_REG_SP, &sp) != UNW_ESUCCESS) {
-		cerr << "Error during call backtrace retrieval: impossible to retrieve a stack pointer" << endl;
-		return_value = Tracer::UNWIND_ERROR;
-	}
-	assert(sp == this->_current_state->regs_state->sp());
-	if (!this->_sp_base_addr) {
-		this->_sp_base_addr = sp;
-	}
-	if (this->_no_backtrace) {
-		this->_current_state->sp_backtrace.push_back((long long int) (this->_sp_base_addr - sp));
-	}
-	if (!this->_no_backtrace) {
-		do {
-			if (unw_get_proc_name(&it, function_name, sizeof(function_name), &offset) != UNW_ESUCCESS) {
-				cerr << "Error during call backtrace retrieval: impossible to retrieve a function name" << endl;
-			}
-			if (unw_get_reg(&it, UNW_REG_SP, &sp) != UNW_ESUCCESS) {
-				cerr << "Error during call backtrace retrieval: impossible to retrieve a stack pointer" << endl;
-				return_value = Tracer::UNWIND_ERROR;
-			}
-			if (!strlen(function_name)) {
-				this->_current_state->fn_backtrace.emplace_back((long long int) (this->_sp_base_addr - sp), offset);
-			} else {
-				this->_current_state->fn_backtrace.emplace_back(string(function_name), offset);
-			}
-			this->_current_state->sp_backtrace.push_back((long long int) (this->_sp_base_addr - sp));
-			if (unw_get_reg(&it, UNW_REG_IP, &pc) != UNW_ESUCCESS) {
-				cerr << "Error during call backtrace retrieval: impossible to retrieve the instruction pointer" << endl;
-				return_value = Tracer::UNWIND_ERROR;
-			}
-			this->_current_state->pc_backtrace.push_back((long long int) (this->_pc_base_addr - pc));
-			//cout << function_name << " + " << offset << " @ " << pc << " SP: " << sp << endl;
-		} while (unw_step(&it) > 0);
-	}
-	return return_value;
 }
 
 /**

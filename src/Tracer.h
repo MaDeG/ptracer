@@ -8,7 +8,6 @@
                           errno = 0; \
                         } while (false);
 #define MAX_FUNCTION_NAME_LENGTH 256
-#include <libunwind-ptrace.h>
 #include <vector>
 #include <linux/limits.h>
 #include <signal.h>
@@ -31,8 +30,7 @@ public:
   enum {
     GENERIC_ERROR = -1,          // Returned in case of a generic error not related with ptrace
     PTRACE_ERROR = -2,           // Returned when a ptrace error occurred
-    UNWIND_ERROR = -3,           // Returned when a libunwind error occurred
-    EXITED_ERROR = -4,           // Returned when the tracee exited in an unexpected manner.
+    EXITED_ERROR = -3,           // Returned when the tracee exited in an unexpected manner.
     NOT_SPECIAL = 1,             // Returned by Tracer::handle_special_cases() when no special action are required
     SYSCALL_HANDLED = 2,         // Returned when a syscall has been successfully handled
     IMMINENT_EXIT = 3,           // Returned when the trace is going to an end and the next notification will be a child death one
@@ -44,8 +42,7 @@ public:
          char const* const* args,
          bool follow_children,
          bool follow_threads,
-         bool ptrace_jail,
-         bool no_backtrace);
+         bool ptrace_jail);
   Tracer(const char* program,
          char const* const* args);
   Tracer(const std::string executable_name,
@@ -53,10 +50,8 @@ public:
          bool follow_children,
          bool follow_threads,
          bool ptrace_jail,
-         bool no_backtrace,
          std::function<void ()> callback = nullptr);
   Tracer(const Tracer& tracer, const int pid, const int spid);
-  ~Tracer();
   int kill_process(int signal = SIGKILL);
   std::string get_executable_name() const;
   void set_executable_name(std::string executable_name);
@@ -68,7 +63,7 @@ public:
   int handle(int status);
   int proceed();
   int init(int status = -1);
-  void set_options(bool follow_children, bool follow_threads, bool ptrace_jail, bool no_backtrace);
+  void set_options(bool follow_children, bool follow_threads, bool ptrace_jail);
   std::string serialize() const;
   void wait_for_attach();
 
@@ -80,8 +75,6 @@ private:
   std::shared_ptr<ProcessTermination> _termination_state = nullptr;
   bool _running = false;
   bool _attached = false;
-  unw_addr_space_t _address_space = nullptr;
-  struct UPT_info* _info = nullptr;
   unsigned long long int _pc_base_addr = 0;
   unsigned long long int _sp_base_addr = 0;
   const char* _program = nullptr;
@@ -97,7 +90,6 @@ private:
   int systemcall_entry(int status, std::shared_ptr<Registers> regs);
   int systemcall_exit(int status, std::shared_ptr<Registers> regs);
   int syscall_jump(std::shared_ptr<Registers> regs);
-  int get_backtrace();
   int handle_execve(std::shared_ptr<Registers> regs);
   std::string extract_string(unsigned long long int address, unsigned int max_length) const;
   std::shared_ptr<siginfo_t> handle_signal(int status) const;

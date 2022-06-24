@@ -77,8 +77,7 @@ void Launcher::start() {
 	                                                const_cast<char const* const*> (this->tracee_argv),
 	                                                this->follow_children,
 	                                                this->follow_threads,
-	                                                this->tracee_jail,
-	                                                true));
+	                                                this->tracee_jail));
 	TracingManager::start();
 	this->print_syscalls();
 }
