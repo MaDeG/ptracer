@@ -164,17 +164,3 @@ string ProcessTermination::serialize() const {
   flat += to_string(this->get_exit_status()) + "\n";
   return flat;
 }
-
-/**
- * Defines the XES representation of a ProcessTermination.
- * 
- * @return An element of "event" type of the XES format.
- */
-boost::property_tree::ptree ProcessTermination::get_xes() const {
-  boost::property_tree::ptree name;
-  boost::property_tree::ptree event_node = ProcessNotification::get_xes();
-  name.put("<xmlattr>.key", "concept:name");
-  name.put("<xmlattr>.value", "Termination of a thread of " + this->get_executable_name());
-  event_node.add_child("string", name);
-  return event_node;
-}

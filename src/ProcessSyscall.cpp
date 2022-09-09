@@ -19,7 +19,12 @@ const string ProcessSyscall::VALUE_SEPARATOR = ",";
 // Line delimiter that will be used to indicate the end of a serialized object
 const string ProcessSyscall::END_OF_OBJECT = "\n";
 // Set of System calls numbers that may generate a child
-const set<int> ProcessSyscall::child_syscalls = { SYS_clone, SYS_fork, SYS_vfork };
+const set<int> ProcessSyscall::child_syscalls = { SYS_clone,
+#ifdef ARCH_X86_64
+																									SYS_fork,
+																									SYS_vfork
+#endif
+};
 // Set of System calls number that terminates the tracee execution
 const set<int> ProcessSyscall::exit_syscalls = { SYS_exit, SYS_exit_group };
 // Returned when this ProcessState will NOT generate any child thread
@@ -210,7 +215,7 @@ void ProcessSyscall::print() const {
   if (this->regs_state != nullptr) {
     cout << "Registers = {  ";
     cout << "PC : " << this->regs_state->pc() << "  ";
-    cout << "BP : " << this->regs_state->bp() << "  ";
+    cout << "SP : " << this->regs_state->sp() << "  ";
     cout << "RET : " << this->regs_state->ret_arg() << "  ";
     cout << "}" << endl;
   }

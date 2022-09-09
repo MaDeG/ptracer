@@ -8,7 +8,9 @@
                           errno = 0; \
                         } while (false);
 #define MAX_FUNCTION_NAME_LENGTH 256
+#ifdef USE_LIBUNWIND
 #include <libunwind-ptrace.h>
+#endif
 #include <vector>
 #include <linux/limits.h>
 #include <signal.h>
@@ -80,8 +82,10 @@ private:
   std::shared_ptr<ProcessTermination> _termination_state = nullptr;
   bool _running = false;
   bool _attached = false;
+	#ifdef USE_LIBUNWIND
   unw_addr_space_t _address_space = nullptr;
   struct UPT_info* _info = nullptr;
+	#endif
   unsigned long long int _pc_base_addr = 0;
   unsigned long long int _sp_base_addr = 0;
   const char* _program = nullptr;

@@ -69,6 +69,7 @@ void Launcher::start() {
 	} else {
 		cout << "PID to trace: " << this->traced_pid << endl;
 	}
+
 	cout << "Follow threads: " << (this->follow_threads ? "true" : "false") << endl;
 	cout << "Follow children: " << (this->follow_children ? "true" : "false") << endl;
 	cout << "Tracee jail: " << (this->tracee_jail ? "true" : "false") << endl;

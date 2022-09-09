@@ -2,7 +2,6 @@
 #define PROCESSNOTIFICATION_H
 #include <memory>
 #include <string>
-#include <boost/property_tree/ptree.hpp>
 
 class ProcessNotification {
   friend class Tracer;
@@ -17,11 +16,10 @@ public:
   pid_t get_pid() const;
   pid_t get_spid() const;
   bool is_authorised() const;
-  std::string get_timestamp() const;
+  unsigned long long get_timestamp() const;
   virtual bool authorise();
   virtual void print() const;
   virtual std::string serialize() const;
-  virtual boost::property_tree::ptree get_xes() const;
   static std::shared_ptr<ProcessNotification> deserialize(std::string flat, bool no_backtrace);
 protected:
   static const std::string FIELD_SEPARATOR;
@@ -33,7 +31,7 @@ protected:
   virtual void set_timestamp();
 private:
   std::string _notification_origin;
-  std::string _timestamp;
+  unsigned long long _timestamp = 0;
   pid_t _pid = -1;
   pid_t _spid = -1;
   bool _authorised = false;

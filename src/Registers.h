@@ -3,16 +3,18 @@
  * facilitate the extraction of commonly used registers.
  */
 
-
 #ifndef REGISTERS_H
 #define REGISTERS_H
 #include <sys/user.h>
 #include <string>
+#include "definitions.cpp"
 
 class Registers : user_regs_struct {
 public:
   unsigned long long int pc() const;
+#ifdef ARCH_X86_64
   unsigned long long int bp() const;
+#endif
   unsigned long long int sp() const;
   int nsyscall() const;
   long long int ret_arg() const;
@@ -22,6 +24,10 @@ public:
   unsigned long long int arg3() const;
   unsigned long long int arg4() const;
   unsigned long long int arg5() const;
+	#if defined(ARCH_ARM)
+	unsigned long long int arg6() const;
+	unsigned long long int arg7() const;
+	#endif
   operator std::string() const;
 };
 

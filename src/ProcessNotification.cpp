@@ -2,7 +2,7 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
+#include <chrono>
 #include "ProcessNotification.h"
 #include "Launcher.h"
 #include "ProcessSyscall.h"
@@ -139,32 +139,6 @@ string ProcessNotification::serialize() const {
 }
 
 /**
- * Defines the XES representation of a ProcessNotification.
- * This does not set the element concept:name.
- * 
- * @return An element of "event" type of the XES format.
- */
-boost::property_tree::ptree ProcessNotification::get_xes() const {
-  boost::property_tree::ptree event_node;
-  boost::property_tree::ptree timestamp;
-  boost::property_tree::ptree transition;
-  boost::property_tree::ptree resource;
-  // Key attributes set
-  timestamp.put("<xmlattr>.key", "time:timestamp");
-  transition.put("<xmlattr>.key", "lifecycle:transition");
-  resource.put("<xmlattr>.key", "org:resource");
-  // Value attributes set
-  timestamp.put("<xmlattr>.value", this->_timestamp);
-  transition.put("<xmlattr>.value", "complete");
-  resource.put("<xmlattr>.value", this->get_executable_name());
-  // Add to root element
-  event_node.add_child("date", timestamp);
-  event_node.add_child("string", transition);
-  event_node.add_child("string", resource);
-  return event_node;
-}
-
-/**
  * Gets if this notification has already been authorised or not.
  * 
  * @return True if this notification has already been authorised, False otherwise.
@@ -178,8 +152,8 @@ bool ProcessNotification::is_authorised() const {
  * 
  * @return A string containing the timestamp according with this locale.
  */
-string ProcessNotification::get_timestamp() const {
-  assert(!this->_timestamp.empty());
+unsigned long long ProcessNotification::get_timestamp() const {
+  assert(this->_timestamp > 0);
   return this->_timestamp;
 }
 
@@ -252,15 +226,8 @@ shared_ptr<ProcessNotification> ProcessNotification::deserialize(string flat, bo
 }
 
 /**
- * Sets the notification creation time according to the current locale.
+ * Sets the notification creation time in nanoseconds from epoch.
  */
 void ProcessNotification::set_timestamp() {
-  assert(this->_timestamp.empty());
-  boost::posix_time::time_facet* facet = new boost::posix_time::time_facet("%Y-%m-%dT%H:%M:%S.%f%Q");
-  stringstream date_stream;
-  date_stream.imbue(locale(date_stream.getloc(), facet));
-  date_stream << boost::posix_time::microsec_clock::universal_time();
-  this->_timestamp = date_stream.str();
-  this->_timestamp.erase(this->_timestamp.size() - 3, this->_timestamp.size());
-  this->_timestamp += "+01:00";
+  this->_timestamp = std::chrono::duration_cast<std::chrono::nanoseconds> (std::chrono::high_resolution_clock::now().time_since_epoch()).count();
 }

@@ -23,7 +23,6 @@ public:
   bool is_coredump_generated() const;
   void print() const override;
   std::string serialize() const override;
-  boost::property_tree::ptree get_xes() const override;
 private:
   int _waitpid_status;
   int _return_value;

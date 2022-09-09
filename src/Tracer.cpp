@@ -32,7 +32,9 @@
 #include <string.h>
 #include <ios>
 #include <memory>
+#ifdef USE_LIBUNWIND
 #include <asm/unistd_64.h>
+#endif
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/syscall.h>
@@ -40,6 +42,10 @@
 #include "Launcher.h"
 #include "Tracer.h"
 #include "TracingManager.h"
+
+#ifndef PTRACE_GETREGS
+#define PTRACE_GETREGS PTRACE_GETREGSET
+#endif
 
 using namespace std;
 
@@ -168,8 +174,10 @@ Tracer::Tracer(const Tracer& tracer, const int pid, const int spid) : _traced_ex
 	this->_traced_spid = spid;
 	this->_running = true;
 	this->_attached = true;
+#ifdef USE_LIBUNWIND
 	this->_address_space = unw_create_addr_space(&_UPT_accessors, 0);
 	this->_info = (UPT_info*) _UPT_create(this->_traced_spid);
+#endif
 }
 
 /**
@@ -177,12 +185,14 @@ Tracer::Tracer(const Tracer& tracer, const int pid, const int spid) : _traced_ex
  */
 Tracer::~Tracer() {
 	cout << "Tracer of PID " << this->_traced_pid << " SPID: " << this->_traced_spid << " is being deleted" << endl;
+#ifdef USE_LIBUNWIND
 	if (this->_address_space != nullptr) {
 		unw_destroy_addr_space(this->_address_space);
 	}
 	if (this->_info != nullptr) {
 		_UPT_destroy(this->_info);
 	}
+#endif
 }
 
 /**
@@ -349,25 +359,21 @@ int Tracer::handle(int status) {
 			}
 			this->_current_state = nullptr;
 			return 0;
-			break;
 		case Tracer::EXECVE_SYSCALL:
 			if (!this->systemcall_exit(status, regs)) {
 				return return_value;
 			}
 			return Tracer::PTRACE_ERROR;
-			break;
 		case Tracer::IMMINENT_EXIT:
 			if (ptrace(PTRACE_SYSCALL, this->_traced_spid, nullptr, 0)) {
 				PERROR("Ptrace error while trying to proceed from a termination notification of SPID " + to_string(this->_traced_spid));
 				return Tracer::PTRACE_ERROR;
 			}
 			return return_value;
-			break;
 		case Tracer::NOT_SPECIAL:
 			break;
 		default:
 			return return_value;
-			break;
 	}
 	if (!WIFSTOPPED(status) || WSTOPSIG(status) != (SIGTRAP | 0x80)) {
 		if (this->handle_signal(status) == nullptr) {
@@ -452,6 +458,7 @@ int Tracer::init(int status) {
 			}
 		} while (!WIFSTOPPED(status) || (WSTOPSIG(status) != SIGSTOP && WSTOPSIG(status) != SIGTRAP));
 	}
+#ifdef USE_LIBUNWIND
 	if (this->_address_space == nullptr && (this->_address_space = unw_create_addr_space(&_UPT_accessors, 0)) == nullptr) {
 		cerr << "Error while initialising the libunwind address space";
 		return Tracer::UNWIND_ERROR;
@@ -460,6 +467,7 @@ int Tracer::init(int status) {
 		cerr << "Error during libunwind initialisation";
 		return Tracer::UNWIND_ERROR;
 	}
+#endif
 	if (this->_ptrace_options < 0) {
 		// Tracer::set_options() will take care of the following part when called
 		cout << "Tracer for SPID " << this->_traced_spid << " set options deferred" << endl;
@@ -686,7 +694,11 @@ int Tracer::handle_special_cases(int status, shared_ptr<Registers> regs) {
 		}
 	}
 	if ((status >> 8 == (SIGTRAP | (PTRACE_EVENT_FORK << 8))) || (status >> 8 == (SIGTRAP | (PTRACE_EVENT_VFORK << 8)))) {
+	#ifdef ARCH_X86_64
 		assert(regs->nsyscall() == SYS_fork || regs->nsyscall() == SYS_vfork || regs->nsyscall() == SYS_clone);
+	#elif defined(ARCH_ARM)
+		assert(regs->nsyscall() == SYS_clone);
+	#endif
 		assert(regs->ret_arg() == -ENOSYS);
 		return_value = this->syscall_jump(regs);
 		assert(this->_current_state->nsyscall == regs->nsyscall());
@@ -757,11 +769,12 @@ int Tracer::systemcall_entry(int status, shared_ptr<Registers> regs) {
 	if (this->get_backtrace()) {
 		return Tracer::UNWIND_ERROR;
 	}
-	// Since after an execve authorisation will not be possible anymore to retrieve the target program we need
+	// Since after an execve authorisation will not be possible anymore, then to retrieve the target program we need
 	// to extract it during the syscall entry and eventually overwrite it if this execve fails.
 	if (this->_current_state->nsyscall == SYS_execve) {
 		try {
-			TracingManager::add_possible_execve(this->_traced_pid, this->extract_string(this->_current_state->call_param.at(0), PATH_MAX));
+			TracingManager::add_possible_execve(this->_traced_pid,
+																					this->extract_string(this->_current_state->call_param.at(0), PATH_MAX));
 		} catch (runtime_error& e) {
 			cerr << "Error while trying to retrieve the execve target program name: " << e.what() << endl;
 		}
@@ -772,7 +785,7 @@ int Tracer::systemcall_entry(int status, shared_ptr<Registers> regs) {
 /**
  * This assumes that the tracee is hanging at a syscall entry, thus it makes it proceed
  * and wait for its syscall exit notification in order to completely skip it.
- * This is called when a syscall gets authorised.
+ * This is called after a syscall is authorised.
  * 
  * @param status The status variable of the waitpid call that have received the sysexit notification.
  * @return Returns: 0 when the syscall exit was successful.
@@ -891,10 +904,11 @@ int Tracer::get_backtrace() {
 	assert(this->_current_state->sp_backtrace.empty());
 	assert(this->_current_state->pc_backtrace.empty());
 	assert(this->_pc_base_addr > 0);
+	int return_value = 0;
+#ifdef USE_LIBUNWIND
 	unw_cursor_t it;
 	char function_name[MAX_FUNCTION_NAME_LENGTH];
 	unw_word_t sp, offset, pc = 0;
-	int return_value = 0;
 	if (unw_init_remote(&it, this->_address_space, this->_info)) {
 		cerr << "Error during the remote cursor initialisation for remote unwinding" << endl;
 		return Tracer::UNWIND_ERROR;
@@ -950,6 +964,10 @@ int Tracer::get_backtrace() {
 			//cout << function_name << " + " << offset << " @ " << pc << " SP: " << sp << endl;
 		} while (unw_step(&it) > 0);
 	}
+#else
+	this->_current_state->pc_backtrace.push_back(this->_current_state->relative_pc);
+	this->_current_state->sp_backtrace.push_back((long long int) (-1));
+#endif
 	return return_value;
 }
 
