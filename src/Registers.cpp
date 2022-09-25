@@ -11,6 +11,12 @@
 using namespace std;
 
 /**
+ * Constructor initializes the iovec structure since this class will always be used in
+ * conjunction with ptrace GETREGSET which requires that data structure.
+ */
+Registers::Registers() : io({(user_regs_struct*) this, sizeof(user_regs_struct)}) { }
+
+/**
  * Gets the Program Counter (or Instruction Pointer).
  * 
  * @return The Program counter register value.
@@ -182,6 +188,10 @@ unsigned long long int Registers::arg7() const {
 	return this->regs[7];
 }
 #endif
+
+const iovec* Registers::get_iovec() const {
+	return &this->io;
+}
 
 /**
  * Defines the object string conversion.

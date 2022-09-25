@@ -7,10 +7,11 @@
 #define REGISTERS_H
 #include <sys/user.h>
 #include <string>
-#include "definitions.cpp"
+#include <sys/uio.h>
 
 class Registers : user_regs_struct {
 public:
+	Registers();
   unsigned long long int pc() const;
 #ifdef ARCH_X86_64
   unsigned long long int bp() const;
@@ -28,7 +29,11 @@ public:
 	unsigned long long int arg6() const;
 	unsigned long long int arg7() const;
 	#endif
+	const iovec* get_iovec() const;
   operator std::string() const;
+
+private:
+	const iovec io;
 };
 
 #endif /* REGISTERS_H */

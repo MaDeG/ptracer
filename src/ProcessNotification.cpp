@@ -226,8 +226,9 @@ shared_ptr<ProcessNotification> ProcessNotification::deserialize(string flat, bo
 }
 
 /**
- * Sets the notification creation time in nanoseconds from epoch.
+ * Sets the notification creation time in microseconds from epoch.
  */
 void ProcessNotification::set_timestamp() {
-  this->_timestamp = std::chrono::duration_cast<std::chrono::nanoseconds> (std::chrono::high_resolution_clock::now().time_since_epoch()).count();
+	this->_timestamp = chrono::time_point_cast<chrono::microseconds>(chrono::system_clock::now()).time_since_epoch().count();
+  //this->_timestamp = std::chrono::duration_cast<std::chrono::microseconds> (std::chrono::high_resolution_clock::now().time_since_epoch()).count();
 }

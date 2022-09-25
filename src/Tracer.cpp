@@ -24,6 +24,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <sys/user.h>
+#include <sys/uio.h>
 #include <sys/reg.h>
 #include <stddef.h>
 #include <signal.h>
@@ -32,20 +33,17 @@
 #include <string.h>
 #include <ios>
 #include <memory>
-#ifdef USE_LIBUNWIND
-#include <asm/unistd_64.h>
-#endif
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/syscall.h>
+#include <elf.h>
 #include <future>
+#ifdef USE_LIBUNWIND
+#include <asm/unistd_64.h>
+#endif
 #include "Launcher.h"
 #include "Tracer.h"
 #include "TracingManager.h"
-
-#ifndef PTRACE_GETREGS
-#define PTRACE_GETREGS PTRACE_GETREGSET
-#endif
 
 using namespace std;
 
@@ -479,7 +477,7 @@ int Tracer::init(int status) {
 	}
 #ifndef NDEBUG
 	Registers regs;
-	if (ptrace(PTRACE_GETREGS, this->_traced_spid, nullptr, &regs)) {
+	if (ptrace(PTRACE_GETREGSET, this->_traced_spid, NT_PRSTATUS, regs.get_iovec())) {
 		PERROR("Ptrace error occurred while trying to GETREGS on the first system call of SPID " + to_string(this->_traced_spid));
 		return Tracer::PTRACE_ERROR;
 	}
@@ -623,7 +621,7 @@ bool Tracer::attach() {
  * not notice the special behaviour.
  * 
  * @param status The status variable of the waitpid call that have received the sysentry notification.
- * @param regs The return value of a PTRACE_GETREGS performed by the caller, this can be changed in case of a skipped notification.
+ * @param regs The return value of a PTRACE_GETREGSET performed by the caller, this can be changed in case of a skipped notification.
  * @return Returns: Tracer::NOT_SPECIAL     when no special actions are required.
  *                  Tracer::SYSCALL_HANDLED when the syscall has been already handled with some special measures.
  *                  Tracer::IMMINENT_EXIT   when the tracee is going to an end and the next notification will be a child death one.
@@ -657,7 +655,7 @@ int Tracer::handle_special_cases(int status, shared_ptr<Registers> regs) {
 		                                                           val);
 		return Tracer::IMMINENT_EXIT;
 	}
-	if (ptrace(PTRACE_GETREGS, this->_traced_spid, nullptr, regs.get())) {
+	if (ptrace(PTRACE_GETREGSET, this->_traced_spid, NT_PRSTATUS, regs->get_iovec())) {
 		PERROR("Ptrace error occurred while trying to GETREGS from the process SPID " + to_string(this->_traced_spid));
 		return Tracer::PTRACE_ERROR;
 	}
@@ -731,7 +729,7 @@ int Tracer::handle_special_cases(int status, shared_ptr<Registers> regs) {
 }
 
 /**
- * This is called when a syscall entry nofication is received by TracingManager::run method.
+ * This is called when a syscall entry notification is received by TracingManager::run method.
  * It performs some integrity checks and acquires all the parameters to construct a new ProcessState.
  * If the Program Counter base pointer has not been already defined it sets it with the address of the current
  * syscall instruction pointer value.
@@ -751,12 +749,14 @@ int Tracer::systemcall_entry(int status, shared_ptr<Registers> regs) {
 	assert(WIFSTOPPED(status) && WSTOPSIG(status) == (SIGTRAP | 0x80));
 	assert(!WIFEXITED(status));
 	this->_current_state = make_shared<ProcessSyscall>();
-	if (ptrace(PTRACE_GETREGS, this->_traced_spid, nullptr, regs.get())) {
+	if (ptrace(PTRACE_GETREGSET, this->_traced_spid, NT_PRSTATUS, regs->get_iovec())) {
 		PERROR("Ptrace error occurred while trying to GETREGS from the process SPID " + to_string(this->_traced_spid) + " during a syscall entry");
 		return Tracer::PTRACE_ERROR;
 	}
 	//cout << "Sysentry PID: " << this->_traced_pid << " SPID: " << this->_traced_spid << " System call: " << regs->nsyscall() << endl;
+#ifdef ARCH_X86_64
 	assert(regs->ret_arg() == -ENOSYS);                                           // The kernel sets rax to -ENOSYS in a syscall entry
+#endif
 	this->_current_state->tracer = TracingManager::tracers[this->_traced_spid];
 	this->_current_state->_notification_origin = this->_traced_executable;
 	this->_current_state->_pid = this->_traced_pid;
@@ -874,7 +874,7 @@ int Tracer::syscall_jump(shared_ptr<Registers> regs) {
 	} while (!ptrace_signal);
 	assert(this->_traced_spid == pid);
 	assert(!WIFEXITED(status));
-	if (ptrace(PTRACE_GETREGS, this->_traced_spid, nullptr, regs.get())) {
+	if (ptrace(PTRACE_GETREGSET, this->_traced_spid, NT_PRSTATUS, regs->get_iovec())) {
 		PERROR("Ptrace error while trying to GETREGS after a syscall jump in SPID " + to_string(this->_traced_spid));
 		return Tracer::PTRACE_ERROR;
 	}
@@ -978,7 +978,7 @@ int Tracer::get_backtrace() {
  * If another thread execute an execve it will still appear that the thread group leader has executed it.
  * The executable change thanks to the TracingManager.
  * 
- * @param regs The return value of a PTRACE_GETREGS performed by the caller, this can be changed in case of a skipped notification.
+ * @param regs The return value of a PTRACE_GETREGSET performed by the caller, this can be changed in case of a skipped notification.
  * @return Returns: 0 if the execve handling was successful.
  *                  Tracer::PTRACE_ERROR if there was an error during the new executable name retrival.
  */

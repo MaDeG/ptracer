@@ -39,6 +39,7 @@ Launcher::Launcher(int argc, const char** argv) {
 	if (option_values.count(Launcher::HELP_OPT)) {
 		cout << Launcher::PROGRAM_NAME << " - " << Launcher::PROGRAM_DESC << endl;
 		cout << description << endl;
+		return;
 	}
 	if (option_values.count(Launcher::PID_OPT)) {
 		this->traced_pid = option_values[Launcher::PID_OPT].as<pid_t>();
@@ -50,7 +51,7 @@ Launcher::Launcher(int argc, const char** argv) {
 			}
 		}
 	} else {
-		throw new runtime_error("Either a PID or a command to run must be specified!");
+		throw runtime_error("Either a PID or a command to run must be specified!");
 	}
 	this->follow_threads = option_values[Launcher::FOLLOW_THREADS_OPT].as<bool>();
 	this->follow_children = option_values[Launcher::FOLLOW_CHILDREN_OPT].as<bool>();
