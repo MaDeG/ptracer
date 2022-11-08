@@ -7,20 +7,17 @@
                                   " -> " + message).c_str()); \
                           errno = 0; \
                         } while (false);
-#define MAX_FUNCTION_NAME_LENGTH 256
-#ifdef USE_LIBUNWIND
-#include <libunwind-ptrace.h>
-#endif
 #include <vector>
 #include <linux/limits.h>
 #include <signal.h>
 #include <mutex>
 #include <condition_variable>
 #include <boost/integer_traits.hpp>
+#include "Backtracer.h"
 #include "ProcessSyscall.h"
 #include "Registers.h"
 #include "ProcessTermination.h"
-#define MAX_SYSCALL_NUMBER 313  // To be dynamically acquired from Linux kernel headers
+#define MAX_SYSCALL_NUMBER 313  // TODO: To be dynamically acquired from Linux kernel headers
 
 class ProcessSyscall;
 
@@ -28,8 +25,6 @@ class Tracer {
   friend class TracingManager;
 public:
 	static const pid_t MAX_PID = boost::integer_traits<pid_t>::const_max;
-  static const std::string FIELD_SEPARATOR;
-  static const std::string END_OF_OBJECT;
   enum {
     GENERIC_ERROR = -1,          // Returned in case of a generic error not related with ptrace
     PTRACE_ERROR = -2,           // Returned when a ptrace error occurred
@@ -71,23 +66,17 @@ public:
   int proceed();
   int init(int status = -1);
   void set_options(bool follow_children, bool follow_threads, bool ptrace_jail, bool no_backtrace);
-  std::string serialize() const;
   void wait_for_attach();
 
 private:
+	const std::unique_ptr<Backtracer> backtracer;
   std::string _traced_executable;
   pid_t _traced_pid = -1;
   pid_t _traced_spid = -1;
-  std::shared_ptr<ProcessSyscall> _current_state = nullptr;
+  std::shared_ptr<ProcessSyscall> currentState = nullptr;
   std::shared_ptr<ProcessTermination> _termination_state = nullptr;
   bool _running = false;
   bool _attached = false;
-	#ifdef USE_LIBUNWIND
-  unw_addr_space_t _address_space = nullptr;
-  struct UPT_info* _info = nullptr;
-	#endif
-  unsigned long long int _pc_base_addr = 0;
-  unsigned long long int _sp_base_addr = 0;
   const char* _program = nullptr;
   char const* const* _args;
   bool _no_backtrace;

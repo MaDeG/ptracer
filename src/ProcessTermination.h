@@ -10,22 +10,18 @@
 
 #include "ProcessNotification.h"
 
-
 class ProcessTermination : public ProcessNotification {
 public:
   ProcessTermination(std::string notification_origin, int pid, int spid, int value, int waitpid_status = -1);
-  ProcessTermination(std::string flat);
   ProcessTermination(const ProcessTermination& orig);
-  ~ProcessTermination() = default;
-  int get_exit_status() const;
-  bool is_signaled() const;
-  int get_termination_signal() const;
-  bool is_coredump_generated() const;
+  int getExitStatus() const;
+  bool isSignaled() const;
+  int getTerminationSignal() const;
+  bool isCoredumpGenerated() const;
   void print() const override;
-  std::string serialize() const override;
 private:
-  int _waitpid_status;
-  int _return_value;
+  int waitpidStatus;
+  int returnValue;
 };
 
 #endif /* PROCESSTERMINATION_H */

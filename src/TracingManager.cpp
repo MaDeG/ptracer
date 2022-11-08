@@ -230,13 +230,13 @@ void TracingManager::run() {
  * @return True if the syscall handle was successfull, False if an error occurred.
  */
 bool TracingManager::handle_syscall(pid_t spid, int status) {
-  int t;
   if (TracingManager::tracers.find(spid) == TracingManager::tracers.end()) {
     cerr << "Impossible to find a Tracer for SPID " << spid << endl;
     cerr << "The status received will be stored" << endl;
     TracingManager::possible_children[spid] = status;
     return true;
   }
+  int t;
   switch (t = TracingManager::tracers[spid]->handle(status)) {
     case 0:
       // System call exit managed
@@ -299,7 +299,7 @@ void TracingManager::handle_termination(pid_t spid) {
  */
 int TracingManager::handle_children(const Tracer& tracer, pid_t pid, pid_t spid) {
   assert(TracingManager::worker_spid == syscall(SYS_gettid));
-  assert(tracer._current_state != nullptr);
+  assert(tracer.currentState != nullptr);
   int status;
   TracingManager::tracers[spid] = make_unique<Tracer>(tracer, pid, spid);
   if (TracingManager::child_callback != nullptr) {
@@ -325,7 +325,7 @@ void TracingManager::handle_execve(pid_t spid) {
   assert(!TracingManager::possible_execves[spid].empty() && TracingManager::possible_execves[spid].size() < PATH_MAX);
   int pid_to_reset = TracingManager::tracers[spid]->get_pid();
   TracingManager::tracers[spid]->set_executable_name(TracingManager::possible_execves[spid]);
-  TracingManager::tracers[spid]->_current_state = nullptr;
+  TracingManager::tracers[spid]->currentState = nullptr;
   TracingManager::tracers[spid]->_termination_state = nullptr;
   cout << "The tracee for PID " << spid << " is changing executable file in " << TracingManager::possible_execves[spid] <<
           " due to an execve" << endl;
@@ -385,13 +385,13 @@ void TracingManager::handle_authorised(int signal) {
   assert(signal == SIGUSR1);
   shared_ptr<ProcessSyscall> current_state;
   while (TracingManager::authorised_tracees.try_pop(current_state)) {
-    if (current_state->get_tracer() == nullptr) {
+    if (current_state->getTracer() == nullptr) {
       cout << "Impossible to find a Tracer for state: " << endl;
       current_state->print();
       continue;
     }
     current_state->authorise();
-    if (current_state->get_tracer()->proceed() == Tracer::PTRACE_ERROR) {
+    if (current_state->getTracer()->proceed() == Tracer::PTRACE_ERROR) {
       cerr << "Impossible to successfully authorise the state: " << endl;
       current_state->print();
     }
@@ -425,13 +425,11 @@ void TracingManager::handle_attach(int signal) {
  * Adds a new possible executable name for an execve syscall entry that has been received.
  * That execve may fail but if it succeed TracingManager::run will expect to find the new
  * executable name in TracingManager::possible_execves.
- * Every received executable_name is sanitised replacing every '/' character with a '_'.
- * 
+ *
  * @param pid             The PID where the execve syscall took place.
  * @param executable_name The new executable name extracted from the tracee memory.
  */
 void TracingManager::add_possible_execve(int pid, string executable_name) {
-  replace(executable_name.begin(), executable_name.end(), '/', '_' );
   TracingManager::possible_execves[pid] = executable_name;
   cout << "Possible execve for pid " << pid << ": " << executable_name << endl;
 }

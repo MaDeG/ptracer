@@ -4,6 +4,7 @@
 #include "ProcessNotification.h"
 #include "ProcessSyscall.h"
 
+//extern "C" __attribute__ ((visibility ("default")))
 class TracingManager {
   friend class Tracer;                                                          // Creation of a new Tracer and SPID check
 public:
@@ -35,8 +36,7 @@ private:
   static void handle_authorised(int signal);
   static void handle_attach(int signal);
   static void add_possible_execve(int pid, std::string executable_name);
-  static bool convert_to_host_namespace(pid_t& pid, pid_t& spid, std::string container_id);
-  TracingManager() { };
+  TracingManager() = default;;
 };
 
 #endif /* TRACINGMANAGER_H */

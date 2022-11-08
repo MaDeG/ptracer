@@ -9,13 +9,6 @@
 
 using namespace std;
 
-// Used as separator among the flat version fields
-const string ProcessNotification::FIELD_SEPARATOR = " ";
-// Used to mark a serialised ProcessNotification as authorised
-const string ProcessNotification::AUTHORISED_SPEC = "Authorised";
-// Used to mark a serialised ProcessNotification as NOT authorised
-const string ProcessNotification::NOT_AUTHORISED_SPEC = "Not Authorised";
-
 /**
  * Build a new basic ProcessNotification given some essential information.
  * 
@@ -24,40 +17,10 @@ const string ProcessNotification::NOT_AUTHORISED_SPEC = "Not Authorised";
  * @param spid                The Thread ID of the thread that has generated this notification.
  */
 ProcessNotification::ProcessNotification(string notification_origin, int pid, int spid) {
-  this->set_timestamp();
-  this->_notification_origin = notification_origin;
-  this->_pid = pid;
-  this->_spid = spid;
-}
-
-ProcessNotification::ProcessNotification(string flat) {
-  vector<string> tokens;
-  boost::split(tokens, flat, boost::is_any_of(ProcessNotification::FIELD_SEPARATOR));
-  this->set_timestamp();
-  if (tokens.size() != 5) {
-    throw new runtime_error("Impossible to deserialise a malformed ProcessNotification: " + flat);
-  }
-  for (string i : tokens) {
-    if (i.empty()) {
-      throw new runtime_error("Impossible to deserialise a malformed ProcessNotification due to a blank field: " + flat);
-    }
-  }
-  this->_notification_origin = tokens.at(1);
-  this->_pid = boost::lexical_cast<pid_t>(tokens.at(2));
-  if (this->_pid <= 0 || this->_pid >= Tracer::MAX_PID) {
-    throw new runtime_error("Found an invalid ProcessNotification PID field: " + tokens.at(2));
-  }
-  this->_spid = boost::lexical_cast<pid_t>(tokens.at(3));
-  if (this->_spid <= 0 || this->_spid >= Tracer::MAX_PID) {
-    throw new runtime_error("Found an invalid ProcessNotification SPID field: " + tokens.at(3));
-  }
-  if (tokens.at(4) == ProcessNotification::AUTHORISED_SPEC) {
-    this->_authorised = true;
-  } else if (tokens.at(4) == ProcessNotification::NOT_AUTHORISED_SPEC) {
-    this->_authorised = false;
-  } else {
-    throw new runtime_error("Found an invalid ProcessNotification authorised field: " + tokens.at(4));
-  }
+	this->setTimestamp();
+  this->notificationOrigin = notification_origin;
+  this->pid = pid;
+  this->spid = spid;
 }
 
 /**
@@ -65,11 +28,11 @@ ProcessNotification::ProcessNotification(string flat) {
  * 
  * @param orig The ProcessNotification that will be copied.
  */
-ProcessNotification::ProcessNotification(const ProcessNotification& orig) : _notification_origin (move(orig._notification_origin)),
-                                                                            _pid                 (orig._pid),
-                                                                            _spid                (orig._spid),
-                                                                            _authorised          (orig._authorised)                 {
-  assert(!this->_notification_origin.empty());
+ProcessNotification::ProcessNotification(const ProcessNotification& orig) : notificationOrigin (move(orig.notificationOrigin)),
+                                                                            pid                 (orig.pid),
+                                                                            spid                (orig.spid),
+                                                                            authorised          (orig.authorised)                 {
+  assert(!this->notificationOrigin.empty());
 }
 
 /**
@@ -77,19 +40,19 @@ ProcessNotification::ProcessNotification(const ProcessNotification& orig) : _not
  * 
  * @return The executable name.
  */
-string ProcessNotification::get_executable_name() const {
-  return this->_notification_origin;
+string ProcessNotification::getExecutableName() const {
+  return this->notificationOrigin;
 }
 
 /**
  * Sets the program executable name which originated this notification.
  * This is not serialised, the Mapper knows how to create different section for each executable name.
  * 
- * @param notification_origin The program executable name.
+ * @param syscall_origin The program executable name.
  */
-void ProcessNotification::set_executable_name(const string& notification_origin) {
-  assert(!notification_origin.empty());
-  this->_notification_origin = notification_origin;
+void ProcessNotification::setExecutableName(const string& syscall_origin) {
+  assert(!syscall_origin.empty());
+  this->notificationOrigin = syscall_origin;
 }
 
 /**
@@ -97,8 +60,8 @@ void ProcessNotification::set_executable_name(const string& notification_origin)
  * 
  * @return The PID that has generated this notification.
  */
-pid_t ProcessNotification::get_pid() const {
-  return this->_pid;
+pid_t ProcessNotification::getPid() const {
+  return this->pid;
 }
 
 /**
@@ -106,36 +69,20 @@ pid_t ProcessNotification::get_pid() const {
  * 
  * @return The SPID that has generated this notification.
  */
-pid_t ProcessNotification::get_spid() const {
-  return this->_spid;
+pid_t ProcessNotification::getSpid() const {
+  return this->spid;
 }
 
 /**
  * Prints to STDOUT all the available information about this ProcessNotification in a standard format.
  */
 void ProcessNotification::print() const {
-  if (!this->_notification_origin.empty()) {
-    cout << "Notification origin: " << this->_notification_origin << endl;
+  if (!this->notificationOrigin.empty()) {
+    cout << "Notification origin: " << this->notificationOrigin << endl;
   }
-  cout << "Notification origin PID: " << this->_pid << endl;
-  cout << "Notification origin SPID: " << this->_spid << endl;
-  cout << "Authorised notification: " << (this->_authorised ? "true" : "false") << endl;
-}
-
-/**
- * Define the serialised format of a ProcessNotification.
- * 
- * @return This ProcessNotification in a flat format.
- */
-string ProcessNotification::serialize() const {
-  string flat;
-  flat = "ProcessNotification" + ProcessNotification::FIELD_SEPARATOR;
-  flat += this->_notification_origin + ProcessNotification::FIELD_SEPARATOR;
-  flat += to_string(this->_pid) + ProcessNotification::FIELD_SEPARATOR;
-  flat += to_string(this->_spid) + ProcessNotification::FIELD_SEPARATOR;
-  flat += (this->_authorised ? ProcessNotification::AUTHORISED_SPEC : ProcessNotification::NOT_AUTHORISED_SPEC);
-  flat += "\n";
-  return flat;
+  cout << "Notification origin PID: " << this->pid << endl;
+  cout << "Notification origin SPID: " << this->spid << endl;
+  cout << "Authorised notification: " << (this->authorised ? "true" : "false") << endl;
 }
 
 /**
@@ -143,8 +90,8 @@ string ProcessNotification::serialize() const {
  * 
  * @return True if this notification has already been authorised, False otherwise.
  */
-bool ProcessNotification::is_authorised() const {
-  return this->_authorised;
+bool ProcessNotification::isAuthorised() const {
+  return this->authorised;
 }
 
 /**
@@ -152,9 +99,9 @@ bool ProcessNotification::is_authorised() const {
  * 
  * @return A string containing the timestamp according with this locale.
  */
-unsigned long long ProcessNotification::get_timestamp() const {
-  assert(this->_timestamp > 0);
-  return this->_timestamp;
+unsigned long long ProcessNotification::getTimestamp() const {
+  assert(this->timestamp > 0);
+  return this->timestamp;
 }
 
 /**
@@ -163,10 +110,10 @@ unsigned long long ProcessNotification::get_timestamp() const {
  * @return False if this notification has already been authorised or an error occurred, True otherwise.
  */
 bool ProcessNotification::authorise() {
-  if(this->_authorised) {
+  if(this->authorised) {
     return false;
   }
-  this->_authorised = true;
+  this->authorised = true;
   return true;
 }
 
@@ -175,9 +122,9 @@ bool ProcessNotification::authorise() {
  * 
  * @param notification_origin The new notification origin executable name, not empty.
  */
-void ProcessNotification::set_notification_origin(string notification_origin) {
+void ProcessNotification::setNotificationOrigin(string notification_origin) {
   assert(!notification_origin.empty());
-  this->_notification_origin = notification_origin;
+  this->notificationOrigin = notification_origin;
 }
 
 /**
@@ -185,9 +132,9 @@ void ProcessNotification::set_notification_origin(string notification_origin) {
  * 
  * @param pid The new notification origin PID.
  */
-void ProcessNotification::set_pid(pid_t pid) {
+void ProcessNotification::setPid(pid_t pid) {
   assert(pid > 0 && pid < Tracer::MAX_PID);
-  this->_pid = pid;
+  this->pid = pid;
 }
 
 /**
@@ -195,40 +142,15 @@ void ProcessNotification::set_pid(pid_t pid) {
  * 
  * @param spid The new notification origin SPID.
  */
-void ProcessNotification::set_spid(pid_t spid) {
+void ProcessNotification::setSpid(pid_t spid) {
   assert(spid > 0 && spid < Tracer::MAX_PID);
-  this->_spid = spid;
-}
-
-/**
- * A ProcessNotification can, other then itself, be a ProcessSyscall or a ProcessTermination,
- * this method ensures that the proper deserialisation procedure is called.
- * 
- * @param flat         The string which contains the serialised ProcessNotification.
- * @param no_backtrace If this ProcessNotification is a ProcessSyscall this is a required parameter.
- * @return The deserialised ProcessNotification object.
- */
-shared_ptr<ProcessNotification> ProcessNotification::deserialize(string flat, bool no_backtrace) {
-  assert(!flat.empty());
-  shared_ptr<ProcessNotification> notification = nullptr;
-  try {
-    if (boost::starts_with(flat, "ProcessNotification")) {
-      notification = make_shared<ProcessNotification>(flat);
-    } else if (boost::starts_with(flat, "ProcessTermination")) {
-      notification = make_shared<ProcessTermination>(flat);
-    } else {
-      notification = make_shared<ProcessSyscall>(flat, no_backtrace);
-    }
-  } catch (runtime_error& e) {
-    // Nothing, notification will stay nullptr
-  }
-  return notification;
+  this->spid = spid;
 }
 
 /**
  * Sets the notification creation time in microseconds from epoch.
  */
-void ProcessNotification::set_timestamp() {
-	this->_timestamp = chrono::time_point_cast<chrono::microseconds>(chrono::system_clock::now()).time_since_epoch().count();
+void ProcessNotification::setTimestamp() {
+	this->timestamp = chrono::time_point_cast<chrono::microseconds>(chrono::system_clock::now()).time_since_epoch().count();
   //this->_timestamp = std::chrono::duration_cast<std::chrono::microseconds> (std::chrono::high_resolution_clock::now().time_since_epoch()).count();
 }

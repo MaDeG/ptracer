@@ -29,7 +29,7 @@ Launcher::Launcher(int argc, const char** argv) {
 			(Launcher::RUN_OPT.c_str(), value<string>(), "Run and Trace the specified program with parameters, if specified needs to be the last option")
 			(Launcher::FOLLOW_THREADS_OPT.c_str(), value<bool>()->default_value(true), "Trace also child threads")
 			(Launcher::FOLLOW_CHILDREN_OPT.c_str(), value<bool>()->default_value(true), "Trace also child processes")
-			(Launcher::JAIL_OPT.c_str(), value<bool>()->default_value(false), "Kill the traced process and all its children if ptracer is killed");
+			(Launcher::JAIL_OPT.c_str(), value<bool>()->default_value(true), "Kill the traced process and all its children if ptracer is killed");
 	parsed_options parsed = command_line_parser(argc, argv).options(description)
 			.allow_unregistered()
 			.run();
@@ -41,24 +41,32 @@ Launcher::Launcher(int argc, const char** argv) {
 		cout << description << endl;
 		return;
 	}
-	if (option_values.count(Launcher::PID_OPT)) {
-		this->traced_pid = option_values[Launcher::PID_OPT].as<pid_t>();
-	} else if (option_values.count(Launcher::RUN_OPT)) {
+	if (option_values.count(Launcher::PID_OPT) > 0) {
+		this->traced_pid = option_values[Launcher::PID_OPT].as<long>();
+	} else if (option_values.count(Launcher::RUN_OPT) > 0) {
 		for (int i = 1; i < argc; i++) {
 			if (!strcmp(argv[i], ("--" + Launcher::RUN_OPT).c_str())) {
 				this->tracee_argv = (char**) &argv[i + 1];
 				break;
 			}
 		}
-	} else {
-		throw runtime_error("Either a PID or a command to run must be specified!");
 	}
+	/*else {
+		throw runtime_error("Either a PID or a command to run must be specified! Use the -h option for help.");
+	}*/
 	this->follow_threads = option_values[Launcher::FOLLOW_THREADS_OPT].as<bool>();
 	this->follow_children = option_values[Launcher::FOLLOW_CHILDREN_OPT].as<bool>();
 	this->tracee_jail = option_values[Launcher::JAIL_OPT].as<bool>();
 }
 
 void Launcher::start() {
+	if (this->tracee_argv == nullptr && this->traced_pid < 0) {
+		cerr << "Either a PID or a command to run must be specified! Use the -h option for help." << endl;
+		return;
+	}
+	cout << "Follow threads: " << (this->follow_threads ? "true" : "false") << endl;
+	cout << "Follow children: " << (this->follow_children ? "true" : "false") << endl;
+	cout << "Tracee jail: " << (this->tracee_jail ? "true" : "false") << endl;
 	if (this->tracee_argv != nullptr) {
 		cout << "Executable to trace: " << this->tracee_argv[0] << endl;
 		cout << "Parameters to pass:" << endl;
@@ -67,20 +75,21 @@ void Launcher::start() {
 			cout << "[" << i << "] -> " << this->tracee_argv[i] << endl;
 			i++;
 		}
+		TracingManager::init(make_shared<Tracer>(const_cast<char*> (this->tracee_argv[0]),
+																						        const_cast<char const* const*> (this->tracee_argv),
+					                                          this->follow_children,
+																										this->follow_threads,
+																										this->tracee_jail,
+																										false));
 	} else {
 		cout << "PID to trace: " << this->traced_pid << endl;
+		TracingManager::init(make_shared<Tracer>("test",
+																						       this->traced_pid,
+																									 this->follow_children,
+																									 this->follow_threads,
+																									 this->tracee_jail,
+				                                            false));
 	}
-
-	cout << "Follow threads: " << (this->follow_threads ? "true" : "false") << endl;
-	cout << "Follow children: " << (this->follow_children ? "true" : "false") << endl;
-	cout << "Tracee jail: " << (this->tracee_jail ? "true" : "false") << endl;
-
-	TracingManager::init(make_shared<Tracer>(const_cast<char*> (this->tracee_argv[0]),
-	                                                const_cast<char const* const*> (this->tracee_argv),
-	                                                this->follow_children,
-	                                                this->follow_threads,
-	                                                this->tracee_jail,
-	                                                true));
 	TracingManager::start();
 	this->print_syscalls();
 }
@@ -90,12 +99,13 @@ void Launcher::print_syscalls() const {
 	while ((notification = TracingManager::next_notification()) != nullptr) {
 		
 		shared_ptr<ProcessSyscall> syscall = dynamic_pointer_cast<ProcessSyscall>(notification);
-		if (notification != nullptr) {
+		if (syscall) {
 			TracingManager::authorise(dynamic_pointer_cast<ProcessSyscall>(notification));
-			cout << syscall->get_timestamp() << " - ";
-			cout << "PID: " << syscall->get_pid() << " - ";
-			cout << "SPID: " << syscall->get_spid() << " - ";
-			cout << "Syscall: " << syscall->get_nsyscall() << endl;
+			/*cout << syscall->getTimestamp() << " - ";
+			cout << "PID: " << syscall->getPid() << " - ";
+			cout << "SPID: " << syscall->getSpid() << " - ";
+			cout << "Syscall: " << syscall->getSyscall() << endl;*/
+			syscall->print();
 		}
 	}
 }

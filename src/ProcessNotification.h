@@ -7,34 +7,28 @@ class ProcessNotification {
   friend class Tracer;
 public:
   ProcessNotification(std::string notification_origin, int pid, int spid);
-  ProcessNotification(std::string flat);
   ProcessNotification(const ProcessNotification& orig);
   ProcessNotification() = default;
   virtual ~ProcessNotification() = default;
-  std::string get_executable_name() const;
-  void set_executable_name(const std::string& syscall_origin);
-  pid_t get_pid() const;
-  pid_t get_spid() const;
-  bool is_authorised() const;
-  unsigned long long get_timestamp() const;
+  std::string getExecutableName() const;
+  void setExecutableName(const std::string& syscall_origin);
+  pid_t getPid() const;
+  pid_t getSpid() const;
+  bool isAuthorised() const;
+  unsigned long long getTimestamp() const;
   virtual bool authorise();
   virtual void print() const;
-  virtual std::string serialize() const;
-  static std::shared_ptr<ProcessNotification> deserialize(std::string flat, bool no_backtrace);
 protected:
-  static const std::string FIELD_SEPARATOR;
-  static const std::string AUTHORISED_SPEC;
-  static const std::string NOT_AUTHORISED_SPEC;
-  virtual void set_notification_origin(std::string notification_origin);
-  virtual void set_pid(pid_t pid);
-  virtual void set_spid(pid_t spid);
-  virtual void set_timestamp();
+  virtual void setNotificationOrigin(std::string notification_origin);
+  virtual void setPid(pid_t pid);
+  virtual void setSpid(pid_t spid);
+  virtual void setTimestamp();
 private:
-  std::string _notification_origin;
-  unsigned long long _timestamp = 0;
-  pid_t _pid = -1;
-  pid_t _spid = -1;
-  bool _authorised = false;
+  std::string notificationOrigin;
+  unsigned long long timestamp = 0;
+  pid_t pid = -1;
+  pid_t spid = -1;
+  bool authorised = false;
 };
 
 #endif /* PROCESSNOTIFICATION_H */

@@ -3,37 +3,28 @@
  * facilitate the extraction of commonly used registers.
  */
 
-#ifndef REGISTERS_H
-#define REGISTERS_H
+#ifndef PTRACER_REGISTERS_H
+#define PTRACER_REGISTERS_H
+#include <sys/uio.h>
 #include <sys/user.h>
 #include <string>
-#include <sys/uio.h>
 
 class Registers : user_regs_struct {
 public:
+	static const unsigned short int ARGS_COUNT;
 	Registers();
   unsigned long long int pc() const;
-#ifdef ARCH_X86_64
   unsigned long long int bp() const;
-#endif
   unsigned long long int sp() const;
-  int nsyscall() const;
-  long long int ret_arg() const;
-  unsigned long long int arg0() const;
-  unsigned long long int arg1() const;
-  unsigned long long int arg2() const;
-  unsigned long long int arg3() const;
-  unsigned long long int arg4() const;
-  unsigned long long int arg5() const;
-	#if defined(ARCH_ARM)
-	unsigned long long int arg6() const;
-	unsigned long long int arg7() const;
-	#endif
-	const iovec* get_iovec() const;
+  unsigned int syscall() const;
+  long long int returnValue() const;
+  unsigned long long int argument(unsigned short int i) const;
+	unsigned long long int flags() const;
+	const iovec* getIovec() const;
   operator std::string() const;
 
 private:
 	const iovec io;
 };
 
-#endif /* REGISTERS_H */
+#endif /* PTRACER_REGISTERS_H */

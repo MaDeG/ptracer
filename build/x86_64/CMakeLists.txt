@@ -3,10 +3,15 @@ project(ptracer VERSION 0.1.0
                 DESCRIPTION "Library and utility tool that can inspect all the system calls performed by a process together with their stack traces"
                 HOMEPAGE_URL "https://github.com/MaDeG/ptracer"
                 LANGUAGES CXX)
-include(GNUInstallDirs)
 
 set(CMAKE_VERBOSE_MAKEFILE ON)
 SET(Boost_DEBUG TRUE)
+
+### Require out-of-source builds
+file(TO_CMAKE_PATH "${PROJECT_BINARY_DIR}/CMakeLists.txt" LOC_PATH)
+if(EXISTS "${LOC_PATH}")
+    message(FATAL_ERROR "You cannot build in a source directory (or any directory with a CMakeLists.txt file). Please make a build subdirectory. Feel free to remove CMakeCache.txt and CMakeFiles.")
+endif()
 
 if(NOT EXISTS "${CMAKE_BINARY_DIR}/conan.cmake")
     message(STATUS "Downloading conan.cmake from https://github.com/conan-io/cmake-conan")
@@ -14,7 +19,6 @@ if(NOT EXISTS "${CMAKE_BINARY_DIR}/conan.cmake")
 endif()
 include(${CMAKE_BINARY_DIR}/conan.cmake)
 
-conan_cmake_autodetect(settings)
 conan_cmake_configure(REQUIRES libunwind/1.6.2
                                boost/1.80.0
                       GENERATORS cmake_find_package
@@ -49,6 +53,7 @@ conan_cmake_configure(REQUIRES libunwind/1.6.2
                               boost:without_timer=True
                               boost:without_type_erasure=True
                               boost:without_wave=True)
+conan_cmake_autodetect(settings)
 conan_cmake_install(PATH_OR_REFERENCE .
                     BUILD missing
                     SETTINGS ${settings})
@@ -59,7 +64,9 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -c -g -Werror -Wall -Wextra -MMD -Wall -Wextra -Wconversion -Wsign-conversion")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fstack-protector-all -Wstack-protector -ftrapv -Wno-unused-but-set-variable -Wformat -Wformat-security -D_FORTIFY_SOURCE=2 -U_FORTIFY_SOURCE")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fstack-protector-all -Wstack-protector -ftrapv -Wno-unused-but-set-variable -Wformat -Wformat-security -D_FORTIFY_SOURCE=2 -U_FORTIFY_SOURCE -fvisibility=hidden -fvisibility-inlines-hidden")
+# Needed for the usage of the correct data structures to extract process information via ptrace
+add_compile_definitions(ARCH_X86_64)
 
 set(Boost_USE_STATIC_LIBS ON)
 find_package(Boost 1.40 COMPONENTS program_options log REQUIRED)
@@ -67,8 +74,12 @@ find_package(libunwind REQUIRED)
 find_package(Threads REQUIRED)
 #set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${LIBUNWIND_LIBRARIES}")
 
-file(GLOB SRC CONFIGURE_DEPENDS "../../src/*.h" "../../src/*.cpp")
-message("Source files: ${SRC}")
+file(GLOB SRC CONFIGURE_DEPENDS "../../src/*.h" "../../src/*.cpp" "../../src/x86_64/*.h" "../../src/x86_64/*.cpp")
+message(STATUS "Source files:")
+foreach (_s ${SRC})
+    get_filename_component(_s "${_s}" ABSOLUTE)
+    message(STATUS "${_s}")
+endforeach()
 
 add_library(prtracer-objects OBJECT ${SRC})
 # shared libraries need PIC
@@ -89,8 +100,6 @@ set_target_properties(ptracer-static PROPERTIES VERSION ${PROJECT_VERSION}
 install(TARGETS ptracer-static
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
         PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-
-add_compile_definitions(ARCH_X86_64 USE_LIBUNWIND)
 
 set_target_properties(ptracer PROPERTIES LINK_SEARCH_START_STATIC ON LINK_SEARCH_END_STATIC ON)
 
