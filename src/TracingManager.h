@@ -2,7 +2,7 @@
 #define TRACINGMANAGER_H
 #include "ConcurrentQueue.h"
 #include "ProcessNotification.h"
-#include "ProcessSyscall.h"
+#include "ProcessSyscallEntry.h"
 
 //extern "C" __attribute__ ((visibility ("default")))
 class TracingManager {
@@ -12,7 +12,7 @@ public:
   static bool init(std::shared_ptr<Tracer> tracer = nullptr);
   static bool start();
   static std::shared_ptr<ProcessNotification> next_notification();
-  static bool authorise(std::shared_ptr<ProcessSyscall> state);
+  static bool authorise(std::shared_ptr<ProcessSyscallEntry> state);
   static bool add_tracer(std::shared_ptr<Tracer> tracer);
   static bool kill_process(int spid = -1);
   static bool is_running();
@@ -22,7 +22,7 @@ private:
   static ConcurrentQueue<std::shared_ptr<Tracer>> attach_wait;
   static std::map<pid_t, std::shared_ptr<Tracer>> tracers;                      // Identify a Tracer using the system-wide unique TID
   static ConcurrentQueue<std::shared_ptr<ProcessNotification>> notification_queue;
-  static ConcurrentQueue<std::shared_ptr<ProcessSyscall>> authorised_tracees;
+  static ConcurrentQueue<std::shared_ptr<ProcessSyscallEntry>> authorised_tracees;
   static std::map<pid_t, std::string> possible_execves;
   static std::map<pid_t, int> possible_children;
   static std::function<void (pid_t, pid_t, pid_t)> child_callback;

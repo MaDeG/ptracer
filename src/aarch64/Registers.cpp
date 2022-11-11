@@ -79,21 +79,3 @@ unsigned long long int Registers::argument(unsigned short int i) const {
 unsigned long long int Registers::flags() const {
 	return this->pstate;
 }
-
-const iovec* Registers::getIovec() const {
-	return &this->io;
-}
-
-/**
- * Defines the object string conversion.
- * It captures only the most important values.
- * 
- * @return The string representation of this object.
- */
-Registers::operator string() const {
-	string ris = "Registers = {  ";
-	ris += "PC : " + to_string(this->pc()) + "  ";
-	ris += "SP : " + to_string(this->sp()) + "  ";
-	ris += "RET : " + to_string(this->returnValue()) + "  }";
-	return ris;
-}

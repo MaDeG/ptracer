@@ -13,11 +13,10 @@
 class ProcessTermination : public ProcessNotification {
 public:
   ProcessTermination(std::string notification_origin, int pid, int spid, int value, int waitpid_status = -1);
-  ProcessTermination(const ProcessTermination& orig);
-  int getExitStatus() const;
-  bool isSignaled() const;
-  int getTerminationSignal() const;
-  bool isCoredumpGenerated() const;
+  [[nodiscard]] int getExitStatus() const;
+  [[nodiscard]] bool isSignaled() const;
+  [[nodiscard]] int getTerminationSignal() const;
+  [[nodiscard]] bool isCoredumpGenerated() const;
   void print() const override;
 private:
   int waitpidStatus;

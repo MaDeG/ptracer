@@ -5,7 +5,7 @@
 #include <chrono>
 #include "ProcessNotification.h"
 #include "Launcher.h"
-#include "ProcessSyscall.h"
+#include "ProcessSyscallEntry.h"
 
 using namespace std;
 
@@ -21,18 +21,6 @@ ProcessNotification::ProcessNotification(string notification_origin, int pid, in
   this->notificationOrigin = notification_origin;
   this->pid = pid;
   this->spid = spid;
-}
-
-/**
- * Copy constructor that pilfers all the ProcessNotification variables.
- * 
- * @param orig The ProcessNotification that will be copied.
- */
-ProcessNotification::ProcessNotification(const ProcessNotification& orig) : notificationOrigin (move(orig.notificationOrigin)),
-                                                                            pid                 (orig.pid),
-                                                                            spid                (orig.spid),
-                                                                            authorised          (orig.authorised)                 {
-  assert(!this->notificationOrigin.empty());
 }
 
 /**
@@ -107,14 +95,13 @@ unsigned long long ProcessNotification::getTimestamp() const {
 /**
  * Authorise the tracer to proceed until the next notification.
  * 
- * @return False if this notification has already been authorised or an error occurred, True otherwise.
+ * @return False if this notification has already been authorised, True otherwise.
  */
 bool ProcessNotification::authorise() {
   if(this->authorised) {
     return false;
   }
-  this->authorised = true;
-  return true;
+  return this->authorised = true;
 }
 
 /**

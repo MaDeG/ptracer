@@ -10,16 +10,16 @@
 class TracingManager;
 class Tracer;
 
-class ProcessSyscall : public ProcessNotification {
+class ProcessSyscallEntry : public ProcessNotification {
   friend class Tracer;
   friend class TracingManager;
 public:
   static const std::set<int> childGeneratingSyscalls;
   static const std::set<int> exitSyscalls;
+	static const std::set<int> nonReturningSyscalls;
   static const int NO_CHILD;
   static const int POSSIBLE_CHILD;
-  ProcessSyscall(const ProcessSyscall& ps);
-  ProcessSyscall();
+  ProcessSyscallEntry(std::string notificationOrigin, int pid, int spid);
   void print() const override;
   unsigned long long int getPc() const;
 	unsigned long long int getSp() const;

@@ -41,19 +41,6 @@ ProcessTermination::ProcessTermination(string notification_origin,
 }
 
 /**
- * Copy constructor that pilfers all the ProcessTermination and ProcessNotification variables.
- * 
- * @param orig The ProcessTermintion that will be copied.
- */
-ProcessTermination::ProcessTermination(const ProcessTermination& orig) : ProcessNotification(orig),
-                                                                         waitpidStatus (orig.waitpidStatus),
-                                                                         returnValue   (orig.returnValue)    {
-  if (!WIFEXITED(this->waitpidStatus)) {
-    throw new runtime_error("Copied a non termination status to a ProcessTermination notification type");
-  }
-}
-
-/**
  * Gets the thread exit status.
  * 
  * @return The thread exit status.
@@ -101,6 +88,7 @@ bool ProcessTermination::isCoredumpGenerated() const {
  * Prints to STDOUT all the available information about this ProcessTermination in a standard format.
  */
 void ProcessTermination::print() const {
+	cout << "------------------ PROCESS TERMINATION START ------------------" << endl;
   cout << "Executable name that is terminated: " << this->getExecutableName() << endl;
   cout << "Terminated PID: " << this->getPid() << endl;
   cout << "Terminated SPID: " << this->getSpid() << endl;
@@ -114,4 +102,5 @@ void ProcessTermination::print() const {
   } else {
     cout << "Exit status: " << this->returnValue << endl;
   }
+	cout << "------------------ PROCESS TERMINATION STOP ------------------" << endl;
 }

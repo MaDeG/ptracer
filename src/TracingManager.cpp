@@ -19,7 +19,7 @@ ConcurrentQueue<shared_ptr<ProcessNotification>> TracingManager::notification_qu
 // Associate every traced SPID with its Tracer
 map<pid_t, shared_ptr<Tracer>> TracingManager::tracers;
 // Queue of states that have been authorised to proceed
-ConcurrentQueue<shared_ptr<ProcessSyscall>> TracingManager::authorised_tracees;
+ConcurrentQueue<shared_ptr<ProcessSyscallEntry>> TracingManager::authorised_tracees;
 // Map of possible execve target programs, that syscall gets executed multiple times trying multiple paths.
 map<pid_t, string> TracingManager::possible_execves;
 // Map of statuses associated with their originator SPID that haven't an associated Tracer (yet)
@@ -85,10 +85,13 @@ shared_ptr<ProcessNotification> TracingManager::next_notification() {
  * handle the queue of authorised tracees.
  * 
  * @param spid The process SPID or (Thread ID) that will be authorised to proceed.
- * @return True if the worker thread was successfully notified, False otherwise.
+ * @return True if the syscall has already been authorised or the worker thread was successfully notified, False otherwise.
  */
-bool TracingManager::authorise(shared_ptr<ProcessSyscall> state) {
-  state->authorise();
+bool TracingManager::authorise(shared_ptr<ProcessSyscallEntry> state) {
+  if (!state->authorise()) {
+		// Already authorised
+		return true;
+	}
   assert(TracingManager::worker_spid > 0 && TracingManager::worker_spid < Tracer::MAX_PID);
   assert(TracingManager::worker_spid != syscall(SYS_gettid));
   if (state == nullptr) {
@@ -194,7 +197,9 @@ void TracingManager::run() {
       }
       break;
     }
-    if (!WIFEXITED(status)) {
+		if (!WIFSTOPPED(status)) {
+			cout << "Received signal not coming from ptrace" << endl;
+		} else if (!WIFEXITED(status)) {
       if (!TracingManager::handle_syscall(spid, status)) {
         break;
       }
@@ -299,7 +304,7 @@ void TracingManager::handle_termination(pid_t spid) {
  */
 int TracingManager::handle_children(const Tracer& tracer, pid_t pid, pid_t spid) {
   assert(TracingManager::worker_spid == syscall(SYS_gettid));
-  assert(tracer.currentState != nullptr);
+  assert(tracer.entryState != nullptr);
   int status;
   TracingManager::tracers[spid] = make_unique<Tracer>(tracer, pid, spid);
   if (TracingManager::child_callback != nullptr) {
@@ -325,10 +330,9 @@ void TracingManager::handle_execve(pid_t spid) {
   assert(!TracingManager::possible_execves[spid].empty() && TracingManager::possible_execves[spid].size() < PATH_MAX);
   int pid_to_reset = TracingManager::tracers[spid]->get_pid();
   TracingManager::tracers[spid]->set_executable_name(TracingManager::possible_execves[spid]);
-  TracingManager::tracers[spid]->currentState = nullptr;
-  TracingManager::tracers[spid]->_termination_state = nullptr;
-  cout << "The tracee for PID " << spid << " is changing executable file in " << TracingManager::possible_execves[spid] <<
-          " due to an execve" << endl;
+  TracingManager::tracers[spid]->entryState = nullptr;
+  TracingManager::tracers[spid]->terminationState = nullptr;
+  cout << "The tracee for PID " << spid << " is changing executable file in " << TracingManager::possible_execves[spid] << " due to an execve" << endl;
   for (auto& i : TracingManager::tracers) {
     assert(i.first == i.second->get_spid());
     // After an execve syscall only the thread group leader will be active so the one with PID == SPID
@@ -383,7 +387,7 @@ bool TracingManager::signalhandler_install() {
 void TracingManager::handle_authorised(int signal) {
   assert(TracingManager::worker_spid == syscall(SYS_gettid));
   assert(signal == SIGUSR1);
-  shared_ptr<ProcessSyscall> current_state;
+  shared_ptr<ProcessSyscallEntry> current_state;
   while (TracingManager::authorised_tracees.try_pop(current_state)) {
     if (current_state->getTracer() == nullptr) {
       cout << "Impossible to find a Tracer for state: " << endl;

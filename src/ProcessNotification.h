@@ -7,15 +7,13 @@ class ProcessNotification {
   friend class Tracer;
 public:
   ProcessNotification(std::string notification_origin, int pid, int spid);
-  ProcessNotification(const ProcessNotification& orig);
-  ProcessNotification() = default;
   virtual ~ProcessNotification() = default;
   std::string getExecutableName() const;
   void setExecutableName(const std::string& syscall_origin);
-  pid_t getPid() const;
-  pid_t getSpid() const;
-  bool isAuthorised() const;
-  unsigned long long getTimestamp() const;
+  [[nodiscard]] pid_t getPid() const;
+  [[nodiscard]] pid_t getSpid() const;
+  [[nodiscard]] bool isAuthorised() const;
+  [[nodiscard]] unsigned long long getTimestamp() const;
   virtual bool authorise();
   virtual void print() const;
 protected:

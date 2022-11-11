@@ -76,19 +76,19 @@ void Launcher::start() {
 			i++;
 		}
 		TracingManager::init(make_shared<Tracer>(const_cast<char*> (this->tracee_argv[0]),
-																						        const_cast<char const* const*> (this->tracee_argv),
-					                                          this->follow_children,
-																										this->follow_threads,
-																										this->tracee_jail,
-																										false));
+																						 const_cast<char const* const*> (this->tracee_argv),
+		                                         this->follow_children,
+																						 this->follow_threads,
+																						 this->tracee_jail,
+																						 false));
 	} else {
 		cout << "PID to trace: " << this->traced_pid << endl;
-		TracingManager::init(make_shared<Tracer>("test",
-																						       this->traced_pid,
-																									 this->follow_children,
-																									 this->follow_threads,
-																									 this->tracee_jail,
-				                                            false));
+		TracingManager::init(make_shared<Tracer>("attached-process-" + to_string(this->traced_pid),
+																			       this->traced_pid,
+																						 this->follow_children,
+																						 this->follow_threads,
+																						 this->tracee_jail,
+																						 false));
 	}
 	TracingManager::start();
 	this->print_syscalls();
@@ -97,15 +97,15 @@ void Launcher::start() {
 void Launcher::print_syscalls() const {
 	shared_ptr<ProcessNotification> notification;
 	while ((notification = TracingManager::next_notification()) != nullptr) {
-		
-		shared_ptr<ProcessSyscall> syscall = dynamic_pointer_cast<ProcessSyscall>(notification);
+		shared_ptr<ProcessSyscallEntry> syscall = dynamic_pointer_cast<ProcessSyscallEntry>(notification);
+		notification->print();
+		// TODO: There should be no need to cast down
 		if (syscall) {
-			TracingManager::authorise(dynamic_pointer_cast<ProcessSyscall>(notification));
+			TracingManager::authorise(dynamic_pointer_cast<ProcessSyscallEntry>(notification));
 			/*cout << syscall->getTimestamp() << " - ";
 			cout << "PID: " << syscall->getPid() << " - ";
 			cout << "SPID: " << syscall->getSpid() << " - ";
 			cout << "Syscall: " << syscall->getSyscall() << endl;*/
-			syscall->print();
 		}
 	}
 }

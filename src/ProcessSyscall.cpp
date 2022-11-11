@@ -7,50 +7,41 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/format.hpp>
 #include "Tracer.h"
-#include "ProcessSyscall.h"
+#include "ProcessSyscallEntry.h"
 #include "TracingManager.h"
 #include "Launcher.h"
+#include "SyscallNameResolver.h"
 
 using namespace std;
 
-// Set of System calls numbers that may generate a child
-const set<int> ProcessSyscall::childGeneratingSyscalls = {SYS_clone,
+// Set of System call numbers that may generate a child
+const set<int> ProcessSyscallEntry::childGeneratingSyscalls = {SYS_clone,
 #ifdef ARCH_X86_64
 																									SYS_fork,
 																									SYS_vfork
 #endif
 };
-// Set of System calls number that terminates the tracee execution
-const set<int> ProcessSyscall::exitSyscalls = {SYS_exit, SYS_exit_group };
+// Set of System call numbers that terminates the tracee execution
+const set<int> ProcessSyscallEntry::exitSyscalls = {SYS_exit, SYS_exit_group };
+// Set of System call numbers that do not return, hence do not generate a notification at their exit
+const set<int> ProcessSyscallEntry::nonReturningSyscalls = {SYS_rt_sigreturn };
 // Returned when this ProcessState will NOT generate any child thread
-const int ProcessSyscall::NO_CHILD = -1;
+const int ProcessSyscallEntry::NO_CHILD = -1;
 // Returned when if this ProcessState succeed a child thread will be generated
-const int ProcessSyscall::POSSIBLE_CHILD = -2;
-
-/**
- * Copy constructor that pilfers all the ProcessState variables.
- * 
- * @param ps The ProcessState that will be copied.
- */
-ProcessSyscall::ProcessSyscall(const ProcessSyscall& ps) : ProcessNotification(ps),
-                                                           returnValue (move(ps.returnValue)),
-                                                           regs        (move(ps.regs)),
-                                                           stackFrames (move(ps.stackFrames)),
-                                                           childPid    (move(ps.childPid))     {
-  assert(this->getChildPid());
-}
+const int ProcessSyscallEntry::POSSIBLE_CHILD = -2;
 
 /**
  * Constructs a new ProcessSyscall, it only sets the timestamp variable.
  */
-ProcessSyscall::ProcessSyscall() {
+ProcessSyscallEntry::ProcessSyscallEntry(std::string notificationOrigin, int pid, int spid) : ProcessNotification(notificationOrigin, pid, spid) {
 	this->setTimestamp();
 }
 
 /**
  * Prints to STDOUT all the available information about this ProcessState in a standard format.
  */
-void ProcessSyscall::print() const {
+void ProcessSyscallEntry::print() const {
+	cout << "------------------ SYSCALL ENTRY START ------------------" << endl;
   cout << "Executable name = " << this->getExecutableName() << endl;
   if (this->getPid() > 0 && this->getPid() < Tracer::MAX_PID) {
     cout << "Process PID = " << this->getPid() << endl;
@@ -58,7 +49,7 @@ void ProcessSyscall::print() const {
   if (this->getSpid() > 0 && this->getSpid() < Tracer::MAX_PID) {
     cout << "Process SPID = " << this->getSpid() << endl;
   }
-  cout << "Syscall number = " << this->getSyscall() << endl;
+  cout << "Syscall = " << SyscallNameResolver::resolve(this->getSyscall()) << " (" << this->getSyscall() << ")" << endl;
   cout << "Return value = " << this->returnValue << endl;
   if (!this->stackFrames.empty()) {
     cout << "Stack unwinding =" << endl;
@@ -72,11 +63,7 @@ void ProcessSyscall::print() const {
 	}
 	cout << "}" << endl;
   if (this->regs != nullptr) {
-    cout << "Registers = {  ";
-    cout << boost::format("PC : %#016x\t") % this->getPc();
-    cout << boost::format("SP : %#016x\t") % this->getSp();
-    cout << boost::format("RET : %#016x\t") % this->getReturnValue();
-    cout << "}" << endl;
+    cout << string(*this->regs) << endl;
   }
   if (this->getChildPid() > 0) {
     cout << "Child PID = " << this->getChildPid() << endl;
@@ -84,6 +71,7 @@ void ProcessSyscall::print() const {
     assert(this->returnValue > 0 && this->returnValue < Tracer::MAX_PID);
   }
   cout << "Timestamp = " << this->getTimestamp() << endl;
+	cout << "------------------ SYSCALL ENTRY STOP ------------------" << endl;
 }
 
 /**
@@ -91,7 +79,7 @@ void ProcessSyscall::print() const {
  * 
  * @return The Program Counter.
  */
-unsigned long long int ProcessSyscall::getPc() const {
+unsigned long long int ProcessSyscallEntry::getPc() const {
   return this->regs->pc();
 }
 
@@ -100,7 +88,7 @@ unsigned long long int ProcessSyscall::getPc() const {
  *
  * @return The Stack Pointer.
  */
-unsigned long long int ProcessSyscall::getSp() const {
+unsigned long long int ProcessSyscallEntry::getSp() const {
 	return this->regs->sp();
 }
 
@@ -109,7 +97,7 @@ unsigned long long int ProcessSyscall::getSp() const {
  * 
  * @return The syscall number.
  */
-int ProcessSyscall::getSyscall() const {
+int ProcessSyscallEntry::getSyscall() const {
   return this->regs->syscall();
 }
 
@@ -122,7 +110,7 @@ int ProcessSyscall::getSyscall() const {
  * 
  * @return The return value of a this system call.
  */
-long long int ProcessSyscall:: getReturnValue() const {
+long long int ProcessSyscallEntry:: getReturnValue() const {
   return this->returnValue;
 }
 
@@ -137,16 +125,16 @@ long long int ProcessSyscall:: getReturnValue() const {
  *                  Tracer::POSSIBLE_CHILD If this syscall is not yet authorised and if succeed
  *                                         it will generate a child.
  */
-pid_t ProcessSyscall::getChildPid() const {
-  if (ProcessSyscall::childGeneratingSyscalls.find(this->getSyscall()) != ProcessSyscall::childGeneratingSyscalls.end()) {
+pid_t ProcessSyscallEntry::getChildPid() const {
+  if (ProcessSyscallEntry::childGeneratingSyscalls.find(this->getSyscall()) != ProcessSyscallEntry::childGeneratingSyscalls.end()) {
     if (this->isAuthorised() && this->returnValue > 0 && this->returnValue < Tracer::MAX_PID) {
       assert(this->childPid > 0 && this->childPid < Tracer::MAX_PID);
       return this->childPid;
     }
-    return ProcessSyscall::POSSIBLE_CHILD;
+    return ProcessSyscallEntry::POSSIBLE_CHILD;
   } else {
     assert(this->childPid < 0);
-    return ProcessSyscall::NO_CHILD;
+    return ProcessSyscallEntry::NO_CHILD;
   }
 }
 
@@ -155,7 +143,7 @@ pid_t ProcessSyscall::getChildPid() const {
  * 
  * @return The Tracer that has originated this object.
  */
-shared_ptr<Tracer> ProcessSyscall::getTracer() const {
+shared_ptr<Tracer> ProcessSyscallEntry::getTracer() const {
   return this->tracer;
 }
 
@@ -165,7 +153,7 @@ shared_ptr<Tracer> ProcessSyscall::getTracer() const {
  * 
  * @param regs The Register object already acquired from the tracee.
  */
-void ProcessSyscall::setRegisters(shared_ptr<Registers> regs) {
+void ProcessSyscallEntry::setRegisters(shared_ptr<Registers> regs) {
   assert(this->regs == nullptr);
   assert(this->returnValue == -ENOSYS);
   assert(!this->isAuthorised());
@@ -179,6 +167,6 @@ void ProcessSyscall::setRegisters(shared_ptr<Registers> regs) {
  * @param i The argument number that will be returned.
  * @return The i-th syscall argument.
  */
-unsigned long long int ProcessSyscall::argument(unsigned short int i) const {
+unsigned long long int ProcessSyscallEntry::argument(unsigned short int i) const {
 	return this->regs->argument(i);
 }

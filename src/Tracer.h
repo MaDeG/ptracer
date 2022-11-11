@@ -14,12 +14,13 @@
 #include <condition_variable>
 #include <boost/integer_traits.hpp>
 #include "Backtracer.h"
-#include "ProcessSyscall.h"
+#include "ProcessSyscallEntry.h"
+#include "ProcessSyscallExit.h"
 #include "Registers.h"
 #include "ProcessTermination.h"
-#define MAX_SYSCALL_NUMBER 313  // TODO: To be dynamically acquired from Linux kernel headers
+#define MAX_SYSCALL_NUMBER 450  // TODO: To be dynamically acquired from Linux kernel headers
 
-class ProcessSyscall;
+class ProcessSyscallEntry;
 
 class Tracer {
   friend class TracingManager;
@@ -50,14 +51,12 @@ public:
          bool follow_children,
          bool follow_threads,
          bool ptrace_jail,
-         bool no_backtrace,
-         std::function<void ()> callback = nullptr);
+         bool no_backtrace);
   Tracer(const Tracer& tracer, const int pid, const int spid);
   ~Tracer();
   int kill_process(int signal = SIGKILL);
   std::string get_executable_name() const;
   void set_executable_name(std::string executable_name);
-  bool set_attach_callback(std::function<void ()> callback);
   pid_t get_pid() const;
   pid_t get_spid() const;
   std::shared_ptr<ProcessNotification> get_current_state() const;
@@ -69,19 +68,20 @@ public:
   void wait_for_attach();
 
 private:
+	static const unsigned int MAXIMUM_PROCESS_NAME_LENGTH;
 	const std::unique_ptr<Backtracer> backtracer;
   std::string _traced_executable;
   pid_t _traced_pid = -1;
   pid_t _traced_spid = -1;
-  std::shared_ptr<ProcessSyscall> currentState = nullptr;
-  std::shared_ptr<ProcessTermination> _termination_state = nullptr;
+  std::shared_ptr<ProcessSyscallEntry> entryState = nullptr;
+	std::shared_ptr<ProcessSyscallExit> exitState = nullptr;
+  std::shared_ptr<ProcessTermination> terminationState = nullptr;
   bool _running = false;
   bool _attached = false;
   const char* _program = nullptr;
   char const* const* _args;
   bool _no_backtrace;
   int _ptrace_options = -1;
-  const std::function<void ()> _attach_callback = nullptr;
   std::mutex _mutex;
   std::condition_variable _condition_attach;
   int exec_program();
@@ -92,7 +92,7 @@ private:
   int syscall_jump(std::shared_ptr<Registers> regs);
   int get_backtrace();
   int handle_execve(std::shared_ptr<Registers> regs);
-  std::string extract_string(unsigned long long int address, unsigned int max_length) const;
+  std::string extract_string(unsigned long long int address, unsigned int maxLength) const;
   std::shared_ptr<siginfo_t> handle_signal(int status) const;
 };
 
