@@ -23,11 +23,6 @@ set(CMAKE_PREFIX_PATH ${CMAKE_BINARY_DIR} ${CMAKE_PREFIX_PATH})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -c -Werror -Wall -Wextra -MMD -Wall -Wextra -Wconversion -Wsign-conversion")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fexceptions -fstack-protector-all -Wstack-protector -ftrapv -Wno-unused-but-set-variable -Wformat -Wformat-security -D_FORTIFY_SOURCE=2 -U_FORTIFY_SOURCE -fvisibility=hidden -fvisibility-inlines-hidden")
-add_compile_options(-fexceptions -frtti)
-# Needed for the usage of the correct data structures to extract process information via ptrace
-add_compile_definitions(ARCH_AARCH64)
 
 include_directories(${PROJECT_SOURCE_DIR}/src/aarch64 ${PROJECT_SOURCE_DIR}/src)
 
@@ -72,12 +67,20 @@ install(TARGETS ptracer-static
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
         PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
-target_link_libraries(ptracer PRIVATE Boost::program_options Boost::thread unwindstack)
+target_link_libraries(ptracer PRIVATE Boost::program_options Boost::thread unwindstack lzma)
 
-include_directories(${CMAKE_SYSROOT}/usr/include/c++/v1/
-                    ${CMAKE_SYSROOT}/usr/include/aarch64-linux-android/
+include_directories(#${CMAKE_SYSROOT}/usr/include/c++/v1/
+                    #${CMAKE_SYSROOT}/usr/include/aarch64-linux-android/
                     ${Boost_INCLUDES}
                     ${libunwindstack-ndk_SOURCE_DIR}/include)
+
+set(EXTRA_FLAGS "-c -Werror -Wall -Wextra -MMD -Wall -Wextra -Wconversion -Wsign-conversion")
+set(EXTRA_FLAGS "-fexceptions -frtti -fstack-protector-all -Wstack-protector -ftrapv -Wno-unused-but-set-variable -Wformat -Wformat-security -D_FORTIFY_SOURCE=2 -U_FORTIFY_SOURCE -fvisibility=hidden -fvisibility-inlines-hidden")
+target_compile_options(ptracer PRIVATE ${CMAKE_C_FLAGS} ${EXTRA_FLAGS})
+target_compile_options(ptracer-static PRIVATE ${CMAKE_C_FLAGS} ${EXTRA_FLAGS})
+target_compile_options(ptracer-shared PRIVATE ${CMAKE_C_FLAGS} ${EXTRA_FLAGS})
+# Needed for the usage of the correct data structures to extract process information via ptrace
+add_compile_definitions(ARCH_AARCH64)
 
 #get_cmake_property(_variableNames VARIABLES)
 #list (SORT _variableNames)

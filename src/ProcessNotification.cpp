@@ -68,9 +68,10 @@ void ProcessNotification::print() const {
   if (!this->notificationOrigin.empty()) {
     cout << "Notification origin: " << this->notificationOrigin << endl;
   }
-  cout << "Notification origin PID: " << this->pid << endl;
-  cout << "Notification origin SPID: " << this->spid << endl;
-  cout << "Authorised notification: " << (this->authorised ? "true" : "false") << endl;
+  cout << "PID: " << this->pid << endl;
+  cout << "SPID: " << this->spid << endl;
+	cout << "Timestamp: " << this->timestamp << endl;
+  cout << (this->authorised ? "Authorized" : "NOT Authorized") << endl;
 }
 
 /**

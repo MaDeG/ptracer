@@ -42,13 +42,7 @@ ProcessSyscallEntry::ProcessSyscallEntry(std::string notificationOrigin, int pid
  */
 void ProcessSyscallEntry::print() const {
 	cout << "------------------ SYSCALL ENTRY START ------------------" << endl;
-  cout << "Executable name = " << this->getExecutableName() << endl;
-  if (this->getPid() > 0 && this->getPid() < Tracer::MAX_PID) {
-    cout << "Process PID = " << this->getPid() << endl;
-  }
-  if (this->getSpid() > 0 && this->getSpid() < Tracer::MAX_PID) {
-    cout << "Process SPID = " << this->getSpid() << endl;
-  }
+  ProcessNotification::print();
   cout << "Syscall = " << SyscallNameResolver::resolve(this->getSyscall()) << " (" << this->getSyscall() << ")" << endl;
   cout << "Return value = " << this->returnValue << endl;
   if (!this->stackFrames.empty()) {
@@ -57,7 +51,7 @@ void ProcessSyscallEntry::print() const {
       cout << string(i) << endl;
     }
   }
-	cout << "Parameters = {  ";
+	cout << "Parameters = { ";
 	for (unsigned long long int i = 0; i < Registers::ARGS_COUNT; i++) {
 		cout << boost::format("%#016x\t") % this->argument(i);
 	}
@@ -70,7 +64,6 @@ void ProcessSyscallEntry::print() const {
     cout << "Child SPID = " << this->returnValue << endl;
     assert(this->returnValue > 0 && this->returnValue < Tracer::MAX_PID);
   }
-  cout << "Timestamp = " << this->getTimestamp() << endl;
 	cout << "------------------ SYSCALL ENTRY STOP ------------------" << endl;
 }
 

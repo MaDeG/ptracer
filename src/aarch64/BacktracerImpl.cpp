@@ -21,9 +21,6 @@ std::vector<StackFrame> BacktracerImpl::unwind() {
 	}
 	this->unwinder->SetRegs(regs);
 	this->unwinder->Unwind();
-//	for (int i = 0; i < this->unwinder->NumFrames(); i++) {
-//		cout << this->unwinder->FormatFrame(i) << endl;
-//	}
 	for (FrameData& i : unwinder->ConsumeFrames()) {
 		string functionName = (string) i.function_name;
 		char* demangled_name = abi::__cxa_demangle(i.function_name.c_str(), nullptr, nullptr, nullptr);

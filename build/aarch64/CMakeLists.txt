@@ -11,7 +11,7 @@ cmake_minimum_required(VERSION 3.22)
 set(CMAKE_VERBOSE_MAKEFILE ON)
 set(CMAKE_BUILD_TYPE Debug)
 
-### Require out-of-source builds
+# Require out-of-source builds
 file(TO_CMAKE_PATH "${PROJECT_BINARY_DIR}/CMakeLists.txt" LOC_PATH)
 if(EXISTS "${LOC_PATH}")
     message(FATAL_ERROR "You cannot build in a source directory (or any directory with a CMakeLists.txt file). Please make a build subdirectory. Feel free to remove CMakeCache.txt and CMakeFiles.")
@@ -26,9 +26,12 @@ endif()
 include(${CMAKE_BINARY_DIR}/conan.cmake)
 
 conan_cmake_configure(REQUIRES boost/1.80.0
+                               tinyxml2/9.0.0
+                               libarchive/3.6.1
                       GENERATORS cmake_find_package
                                  virtualenv
-                      OPTIONS boost:shared=False
+                      OPTIONS tinyxml2:shared=False
+                              boost:shared=False
                               boost:without_atomic=False
                               boost:without_chrono=False
                               boost:without_container=False

@@ -89,15 +89,13 @@ bool ProcessTermination::isCoredumpGenerated() const {
  */
 void ProcessTermination::print() const {
 	cout << "------------------ PROCESS TERMINATION START ------------------" << endl;
-  cout << "Executable name that is terminated: " << this->getExecutableName() << endl;
-  cout << "Terminated PID: " << this->getPid() << endl;
-  cout << "Terminated SPID: " << this->getSpid() << endl;
+	ProcessNotification::print();
   if (this->waitpidStatus > 0) {
     cout << "Exit status: " << this->getExitStatus() << endl;
     if (this->isSignaled()) {
       cout << "Termination signal: " << this->getTerminationSignal() << endl;
       cout << "Signal description: " << string(strsignal(this->getTerminationSignal())) << endl;
-      cout << "Core dump generated: " << (this->isCoredumpGenerated() ? "true" : "false") << endl;
+      cout << "Core dump " << (this->isCoredumpGenerated() ? "" : "NOT") << " generated: " << endl;
     }
   } else {
     cout << "Exit status: " << this->returnValue << endl;

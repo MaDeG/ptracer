@@ -18,7 +18,5 @@ void ProcessSyscallExit::print() const {
 	cout << "------------------ SYSCALL EXIT START ------------------" << endl;
 	ProcessNotification::print();
 	cout << (boost::format("Return value: %#016x") % this->getReturnValue()).str() << endl;
-	// TODO: Timestamp should be printed by superclass
-	cout << "Timestamp = " << this->getTimestamp() << endl;
 	cout << "------------------ SYSCALL EXIT STOP ------------------" << endl;
 }
