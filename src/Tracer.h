@@ -43,7 +43,7 @@ public:
          bool follow_children,
          bool follow_threads,
          bool ptrace_jail,
-         bool no_backtrace);
+         bool backtrace);
   Tracer(const char* program,
          char const* const* args);
   Tracer(const std::string executable_name,
@@ -51,49 +51,50 @@ public:
          bool follow_children,
          bool follow_threads,
          bool ptrace_jail,
-         bool no_backtrace);
+         bool backtrace);
   Tracer(const Tracer& tracer, const int pid, const int spid);
   ~Tracer();
-  int kill_process(int signal = SIGKILL);
-  std::string get_executable_name() const;
-  void set_executable_name(std::string executable_name);
-  pid_t get_pid() const;
-  pid_t get_spid() const;
-  std::shared_ptr<ProcessNotification> get_current_state() const;
-  bool is_tracing() const;
+  int killProcess(int signal = SIGKILL);
+  std::string getExecutableName() const;
+  void setExecutableName(std::string executableName);
+  pid_t getPid() const;
+  pid_t getSpid() const;
+  std::shared_ptr<ProcessNotification> getCurrentState() const;
+  bool isTracing() const;
   int handle(int status);
   int proceed();
   int init(int status = -1);
   void set_options(bool follow_children, bool follow_threads, bool ptrace_jail, bool no_backtrace);
-  void wait_for_attach();
+  void waitForAttach();
+	std::string extractString(unsigned long long int address, unsigned int maxLength) const;
+	char* extractBytes(unsigned long long int address, unsigned int maxLength) const;
 
 private:
 	static const unsigned int MAXIMUM_PROCESS_NAME_LENGTH;
 	const std::unique_ptr<Backtracer> backtracer;
-  std::string _traced_executable;
-  pid_t _traced_pid = -1;
-  pid_t _traced_spid = -1;
+  std::string tracedExecutable;
+  pid_t tracedPid = -1;
+  pid_t tracedSpid = -1;
   std::shared_ptr<ProcessSyscallEntry> entryState = nullptr;
 	std::shared_ptr<ProcessSyscallExit> exitState = nullptr;
   std::shared_ptr<ProcessTermination> terminationState = nullptr;
-  bool _running = false;
-  bool _attached = false;
-  const char* _program = nullptr;
-  char const* const* _args;
-  bool _no_backtrace;
-  int _ptrace_options = -1;
-  std::mutex _mutex;
-  std::condition_variable _condition_attach;
-  int exec_program();
+  bool running = false;
+  bool attached = false;
+  const char* program = nullptr;
+  char const* const* args;
+  bool backtrace;
+  int ptraceOptions = -1;
+  std::mutex attachMutex;
+  std::condition_variable conditionAttach;
+  int execProgram();
   bool attach();
-  int handle_special_cases(int status, std::shared_ptr<Registers> regs);
-  int systemcall_entry(int status, std::shared_ptr<Registers> regs);
-  int systemcall_exit(int status, std::shared_ptr<Registers> regs);
-  int syscall_jump(std::shared_ptr<Registers> regs);
-  int get_backtrace();
-  int handle_execve(std::shared_ptr<Registers> regs);
-  std::string extract_string(unsigned long long int address, unsigned int maxLength) const;
-  std::shared_ptr<siginfo_t> handle_signal(int status) const;
+  int handleSpecialCases(int status, std::shared_ptr<Registers> regs);
+  int syscallEntry(int status, std::shared_ptr<Registers> regs);
+  int syscallExit(int status, std::shared_ptr<Registers> regs);
+  int syscallJump(std::shared_ptr<Registers> regs);
+  int getBacktrace();
+  int handleExecve(std::shared_ptr<Registers> regs);
+  std::shared_ptr<siginfo_t> handleSignal(int status) const;
 };
 
 #endif // TRACER_H

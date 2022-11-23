@@ -8,7 +8,7 @@ class ProcessNotification {
 public:
   ProcessNotification(std::string notification_origin, int pid, int spid);
   virtual ~ProcessNotification() = default;
-  std::string getExecutableName() const;
+  [[nodiscard]] std::string getExecutableName() const;
   void setExecutableName(const std::string& syscall_origin);
   [[nodiscard]] pid_t getPid() const;
   [[nodiscard]] pid_t getSpid() const;

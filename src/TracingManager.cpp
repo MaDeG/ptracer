@@ -7,6 +7,7 @@
 #include <boost/algorithm/string.hpp>
 #include "TracingManager.h"
 #include "ProcessTermination.h"
+#include "SyscallDecoderMapper.h"
 
 using namespace std;
 
@@ -144,10 +145,10 @@ bool TracingManager::kill_process(int spid) {
     if (TracingManager::tracers.find(spid) == TracingManager::tracers.end()) {
       return false;
     }
-    return TracingManager::tracers[spid]->kill_process();
+    return TracingManager::tracers[spid]->killProcess();
   }
   for (auto& i : TracingManager::tracers) {
-    return_value = (i.second)->kill_process();
+    return_value = (i.second)->killProcess();
   }
   return return_value;
 }
@@ -186,8 +187,8 @@ void TracingManager::run() {
   do {
     first = TracingManager::attach_wait.pop();
   } while (first->init());
-  assert(first->get_spid() > 0 && first->get_spid() < Tracer::MAX_PID);
-  TracingManager::tracers[first->get_spid()] = move(first);
+  assert(first->getSpid() > 0 && first->getSpid() < Tracer::MAX_PID);
+  TracingManager::tracers[first->getSpid()] = move(first);
   do {
     spid = waitpid(-1, &status, __WALL);
     if (spid < 0) {
@@ -247,7 +248,13 @@ bool TracingManager::handle_syscall(pid_t spid, int status) {
       // System call exit managed
       break;
     case Tracer::WAIT_FOR_AUTHORISATION:
-      TracingManager::notification_queue.push(TracingManager::tracers[spid]->get_current_state());
+			// TODO: The if below should not be here
+			if (TracingManager::tracers[spid]->entryState) {
+				SyscallDecoderMapper::decode(*TracingManager::tracers[spid]->entryState);
+			} else if (TracingManager::tracers[spid]->exitState) {
+			  SyscallDecoderMapper::decode(*TracingManager::tracers[spid]->exitState);
+		  }
+      TracingManager::notification_queue.push(TracingManager::tracers[spid]->getCurrentState());
       break;
     case Tracer::EXECVE_SYSCALL:
       TracingManager::handle_execve(spid);
@@ -278,11 +285,11 @@ bool TracingManager::handle_syscall(pid_t spid, int status) {
 void TracingManager::handle_termination(pid_t spid) {
   assert(spid > 0 && spid < Tracer::MAX_PID);
   assert(TracingManager::tracers.find(spid) != TracingManager::tracers.end());
-  assert(!TracingManager::tracers[spid]->is_tracing());
-  if (dynamic_pointer_cast<ProcessTermination>(TracingManager::tracers[spid]->get_current_state()) == nullptr) {
+  assert(!TracingManager::tracers[spid]->isTracing());
+  if (dynamic_pointer_cast<ProcessTermination>(TracingManager::tracers[spid]->getCurrentState()) == nullptr) {
     //TracingManager::tracers[spid]->get_current_state()->print();
   }
-  TracingManager::notification_queue.push(TracingManager::tracers[spid]->get_current_state());
+  TracingManager::notification_queue.push(TracingManager::tracers[spid]->getCurrentState());
   // Ptrace does not guarantee that a thread exit notification is always delivered
   if (TracingManager::tracers.erase(spid) != 1) {
     cerr << "Impossible to delete the SPID " << spid << " Tracer" << endl;
@@ -308,7 +315,7 @@ int TracingManager::handle_children(const Tracer& tracer, pid_t pid, pid_t spid)
   int status;
   TracingManager::tracers[spid] = make_unique<Tracer>(tracer, pid, spid);
   if (TracingManager::child_callback != nullptr) {
-    TracingManager::child_callback(tracer.get_spid(), pid, spid);
+    TracingManager::child_callback(tracer.getSpid(), pid, spid);
   }
   if (TracingManager::possible_children.find(spid) != TracingManager::possible_children.end()) {
     status = TracingManager::possible_children[spid];
@@ -328,17 +335,17 @@ int TracingManager::handle_children(const Tracer& tracer, pid_t pid, pid_t spid)
 void TracingManager::handle_execve(pid_t spid) {
   assert(TracingManager::possible_execves.find(spid) != TracingManager::possible_execves.end());
   assert(!TracingManager::possible_execves[spid].empty() && TracingManager::possible_execves[spid].size() < PATH_MAX);
-  int pid_to_reset = TracingManager::tracers[spid]->get_pid();
-  TracingManager::tracers[spid]->set_executable_name(TracingManager::possible_execves[spid]);
+  int pid_to_reset = TracingManager::tracers[spid]->getPid();
+	TracingManager::tracers[spid]->setExecutableName(TracingManager::possible_execves[spid]);
   TracingManager::tracers[spid]->entryState = nullptr;
   TracingManager::tracers[spid]->terminationState = nullptr;
   cout << "The tracee for PID " << spid << " is changing executable file in " << TracingManager::possible_execves[spid] << " due to an execve" << endl;
   for (auto& i : TracingManager::tracers) {
-    assert(i.first == i.second->get_spid());
+    assert(i.first == i.second->getSpid());
     // After an execve syscall only the thread group leader will be active so the one with PID == SPID
-    if (i.second->get_pid() == pid_to_reset && i.second->get_pid() != i.second->get_spid()) {
-      if (TracingManager::tracers.erase(i.second->get_spid()) != 1) {
-        cerr << "Impossibile to delete the SPID " << i.second->get_spid() << " Tracer after an execve syscall" << endl;
+    if (i.second->getPid() == pid_to_reset && i.second->getPid() != i.second->getSpid()) {
+      if (TracingManager::tracers.erase(i.second->getSpid()) != 1) {
+        cerr << "Impossibile to delete the SPID " << i.second->getSpid() << " Tracer after an execve syscall" << endl;
       }
     }
   }
@@ -415,13 +422,13 @@ void TracingManager::handle_attach(int signal) {
   assert(!TracingManager::attach_wait.empty());
   shared_ptr<Tracer> tracer;
   while (TracingManager::attach_wait.try_pop(tracer)) {
-    assert(tracer->get_spid() > 0 && tracer->get_spid() < Tracer::MAX_PID);
+    assert(tracer->getSpid() > 0 && tracer->getSpid() < Tracer::MAX_PID);
     if (tracer->init()) {
-      cerr << "Error during Tracer for SPID " << tracer->get_spid() << " initialisation" << endl;
+      cerr << "Error during Tracer for SPID " << tracer->getSpid() << " initialisation" << endl;
       continue;
     }
-    assert(tracer->is_tracing());
-    TracingManager::tracers[tracer->get_spid()] = tracer;
+    assert(tracer->isTracing());
+    TracingManager::tracers[tracer->getSpid()] = tracer;
   }
 }
 

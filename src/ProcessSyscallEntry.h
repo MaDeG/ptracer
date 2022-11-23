@@ -21,13 +21,13 @@ public:
   static const int POSSIBLE_CHILD;
   ProcessSyscallEntry(std::string notificationOrigin, int pid, int spid);
   void print() const override;
-  unsigned long long int getPc() const;
-	unsigned long long int getSp() const;
-  int getSyscall() const;
-  long long int getReturnValue() const;
-  pid_t getChildPid() const;
-  std::shared_ptr<Tracer> getTracer() const;
-	unsigned long long int argument(unsigned short int i) const;
+  [[nodiscard]] unsigned long long int getPc() const;
+	[[nodiscard]] unsigned long long int getSp() const;
+  [[nodiscard]] int getSyscall() const;
+  [[nodiscard]] long long int getReturnValue() const;
+  [[nodiscard]] pid_t getChildPid() const;
+  [[nodiscard]] std::shared_ptr<Tracer> getTracer() const;
+	[[nodiscard]] unsigned long long int argument(unsigned short int i) const;
 
 private:
   std::shared_ptr<Tracer> tracer;

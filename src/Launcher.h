@@ -11,11 +11,13 @@ private:
 	static const std::string FOLLOW_THREADS_OPT;
 	static const std::string FOLLOW_CHILDREN_OPT;
 	static const std::string JAIL_OPT;
+	static const std::string BACKTRACE_OPT;
 	pid_t traced_pid = -1;
 	char** tracee_argv = nullptr;
 	bool follow_threads;
 	bool follow_children;
 	bool tracee_jail;
+	bool backtrace;
 	void print_syscalls() const;
 
 public:

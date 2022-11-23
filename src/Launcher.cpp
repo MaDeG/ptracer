@@ -2,6 +2,7 @@
 #include <iostream>
 #include "Launcher.h"
 #include "TracingManager.h"
+#include "SyscallDecoderMapper.h"
 
 using namespace std;
 using namespace boost::program_options;
@@ -14,6 +15,13 @@ const string Launcher::RUN_OPT = "run";
 const string Launcher::FOLLOW_THREADS_OPT = "follow-threads";
 const string Launcher::FOLLOW_CHILDREN_OPT = "follow-children";
 const string Launcher::JAIL_OPT = "jail";
+const string Launcher::BACKTRACE_OPT = "backtrace";
+
+void terminationHandler(int signum) {
+	cout << "Termination signal received" << endl;
+	SyscallDecoderMapper::printReport();
+	exit(1);
+}
 
 /**
  * The two main parameters are necessary since we need to get the initialisation parameters.
@@ -24,15 +32,18 @@ const string Launcher::JAIL_OPT = "jail";
  */
 Launcher::Launcher(int argc, const char** argv) {
 	boost::program_options::options_description description("Ptracer usage");
-	description.add_options()(Launcher::HELP_OPT.c_str(), "Display this help message")
+	description.add_options()
+			(Launcher::HELP_OPT.c_str(), "Display this help message")
 			(Launcher::PID_OPT.c_str(), value<long>(), "PID of the process to trace")
 			(Launcher::RUN_OPT.c_str(), value<string>(), "Run and Trace the specified program with parameters, if specified needs to be the last option")
 			(Launcher::FOLLOW_THREADS_OPT.c_str(), value<bool>()->default_value(true), "Trace also child threads")
 			(Launcher::FOLLOW_CHILDREN_OPT.c_str(), value<bool>()->default_value(true), "Trace also child processes")
-			(Launcher::JAIL_OPT.c_str(), value<bool>()->default_value(true), "Kill the traced process and all its children if ptracer is killed");
+			(Launcher::JAIL_OPT.c_str(), value<bool>()->default_value(false), "Kill the traced process and all its children if ptracer is killed")
+			(Launcher::BACKTRACE_OPT.c_str(), value<bool>()->default_value(true), "Extract the full stacktrace that lead to a systemcall")
+	;
 	parsed_options parsed = command_line_parser(argc, argv).options(description)
-			.allow_unregistered()
-			.run();
+																												 .allow_unregistered()
+																												 .run();
 	boost::program_options::variables_map option_values;
 	store(parsed, option_values);
 	notify(option_values);
@@ -57,6 +68,7 @@ Launcher::Launcher(int argc, const char** argv) {
 	this->follow_threads = option_values[Launcher::FOLLOW_THREADS_OPT].as<bool>();
 	this->follow_children = option_values[Launcher::FOLLOW_CHILDREN_OPT].as<bool>();
 	this->tracee_jail = option_values[Launcher::JAIL_OPT].as<bool>();
+	this->backtrace = option_values[Launcher::BACKTRACE_OPT].as<bool>();
 }
 
 void Launcher::start() {
@@ -80,7 +92,7 @@ void Launcher::start() {
 		                                         this->follow_children,
 																						 this->follow_threads,
 																						 this->tracee_jail,
-																						 false));
+																						 this->backtrace));
 	} else {
 		cout << "PID to trace: " << this->traced_pid << endl;
 		TracingManager::init(make_shared<Tracer>("attached-process-" + to_string(this->traced_pid),
@@ -88,8 +100,9 @@ void Launcher::start() {
 																						 this->follow_children,
 																						 this->follow_threads,
 																						 this->tracee_jail,
-																						 false));
+																						 this->backtrace));
 	}
+	signal(SIGINT, terminationHandler);
 	TracingManager::start();
 	this->print_syscalls();
 }
@@ -101,11 +114,13 @@ void Launcher::print_syscalls() const {
 		notification->print();
 		// TODO: There should be no need to cast down
 		if (syscall) {
-			TracingManager::authorise(dynamic_pointer_cast<ProcessSyscallEntry>(notification));
+			shared_ptr<ProcessSyscallEntry> entry = dynamic_pointer_cast<ProcessSyscallEntry>(notification);
+			TracingManager::authorise(entry);
 			/*cout << syscall->getTimestamp() << " - ";
 			cout << "PID: " << syscall->getPid() << " - ";
 			cout << "SPID: " << syscall->getSpid() << " - ";
 			cout << "Syscall: " << syscall->getSyscall() << endl;*/
 		}
 	}
+	SyscallDecoderMapper::printReport();
 }
