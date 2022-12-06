@@ -1,15 +1,11 @@
-#include <string>
 #include <vector>
 #include <iostream>
 #include <string.h>
 #include <sys/syscall.h>
-#include <boost/algorithm/string.hpp>
-#include <boost/lexical_cast.hpp>
 #include <boost/format.hpp>
 #include "Tracer.h"
 #include "ProcessSyscallEntry.h"
 #include "TracingManager.h"
-#include "Launcher.h"
 #include "SyscallNameResolver.h"
 
 using namespace std;
@@ -17,8 +13,8 @@ using namespace std;
 // Set of System call numbers that may generate a child
 const set<int> ProcessSyscallEntry::childGeneratingSyscalls = {SYS_clone,
 #ifdef ARCH_X86_64
-																									SYS_fork,
-																									SYS_vfork
+																															 SYS_fork,
+																															 SYS_vfork
 #endif
 };
 // Set of System call numbers that terminates the tracee execution
@@ -33,7 +29,7 @@ const int ProcessSyscallEntry::POSSIBLE_CHILD = -2;
 /**
  * Constructs a new ProcessSyscall, it only sets the timestamp variable.
  */
-ProcessSyscallEntry::ProcessSyscallEntry(std::string notificationOrigin, int pid, int spid) : ProcessNotification(notificationOrigin, pid, spid) {
+ProcessSyscallEntry::ProcessSyscallEntry(string notificationOrigin, int pid, int spid) : ProcessNotification(notificationOrigin, pid, spid) {
 	this->setTimestamp();
 }
 
@@ -162,4 +158,8 @@ void ProcessSyscallEntry::setRegisters(shared_ptr<Registers> regs) {
  */
 unsigned long long int ProcessSyscallEntry::argument(unsigned short int i) const {
 	return this->regs->argument(i);
+}
+
+const std::vector<StackFrame>& ProcessSyscallEntry::getStackFrames() const {
+	return this->stackFrames;
 }

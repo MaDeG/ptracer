@@ -75,7 +75,7 @@ conan_basic_setup()
 
 find_package(Threads REQUIRED)
 
-file(GLOB SRC CONFIGURE_DEPENDS "../../src/*.cpp" "../../src/x86_64/*.cpp" "../../src/decoders/*.cpp")
+file(GLOB SRC CONFIGURE_DEPENDS "../../src/*.cpp" "../../src/x86_64/*.cpp" "../../src/decoders/*.cpp" "../../src/dto/*.cpp")
 message(STATUS "Source files:")
 foreach (_s ${SRC})
     get_filename_component(_s "${_s}" ABSOLUTE)

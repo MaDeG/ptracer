@@ -1,5 +1,5 @@
-#ifndef PROCESSNOTIFICATION_H
-#define PROCESSNOTIFICATION_H
+#ifndef PTRACER_PROCESSNOTIFICATION_H
+#define PTRACER_PROCESSNOTIFICATION_H
 #include <memory>
 #include <string>
 
@@ -29,4 +29,4 @@ private:
   bool authorised = false;
 };
 
-#endif /* PROCESSNOTIFICATION_H */
+#endif /* PTRACER_PROCESSNOTIFICATION_H */

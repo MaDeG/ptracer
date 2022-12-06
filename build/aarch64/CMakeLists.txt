@@ -1,8 +1,10 @@
-if (POLICY CMP0048)
-    cmake_policy(SET CMP0048 NEW)
-endif (POLICY CMP0048)
+cmake_minimum_required(VERSION 3.23)
 
-cmake_minimum_required(VERSION 3.20)
+cmake_policy(SET CMP0048 NEW)
+# Avoid warning about DOWNLOAD_EXTRACT_TIMESTAMP in CMake 3.24:
+if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
+    cmake_policy(SET CMP0135 NEW)
+endif()
 
 set(CMAKE_VERBOSE_MAKEFILE ON)
 
@@ -40,41 +42,70 @@ FetchContent_Declare(libunwindstack-ndk
 FetchContent_MakeAvailable(libunwindstack-ndk)
 FetchContent_GetProperties(libunwindstack-ndk)
 
-file(GLOB SRC CONFIGURE_DEPENDS "../../src/*.cpp" "../../src/aarch64/*.cpp" "../../src/decoders/*.cpp")
+include(ExternalProject)
+set(LIBALF_DIR ${CMAKE_BINARY_DIR}/libalf)
+# Hack to retrieve the Android NDK compiler and pass it to Libalf Makefile, to be removed when a new automata library will be implemented
+string(REGEX REPLACE "-$" "${ANDROID_NATIVE_API_LEVEL}-${CMAKE_ANDROID_NDK_TOOLCHAIN_VERSION}" LIBALF_CC_COMPILER ${CMAKE_CXX_ANDROID_TOOLCHAIN_PREFIX})
+set(LIBALF_CXX_COMPILER "${LIBALF_CC_COMPILER}++")
+ExternalProject_Add(libalf-src GIT_REPOSITORY git@github.com:MaDeG/libalf.git
+                               GIT_TAG integration
+                               BUILD_IN_SOURCE TRUE
+                               CONFIGURE_COMMAND ""
+                               BUILD_COMMAND ""
+                               INSTALL_COMMAND mkdir -p ${LIBALF_DIR}/include -p ${LIBALF_DIR}/lib
+                                       COMMAND CC=${LIBALF_CC_COMPILER} AR=${CMAKE_AR} PREFIX=${LIBALF_DIR} make -C libAMoRE install
+                                       COMMAND CXX=${LIBALF_CXX_COMPILER} AR=${CMAKE_AR} CPPFLAGS=-I${LIBALF_DIR}/include LDFLAGS=-L${LIBALF_DIR}/lib PREFIX=${LIBALF_DIR} CXXFLAGS=-std=c++14 make -C libAMoRE++ install
+                                       COMMAND CXX=${LIBALF_CXX_COMPILER} AR=${CMAKE_AR} CPPFLAGS=-I${LIBALF_DIR}/include LDFLAGS=-L${LIBALF_DIR}/lib PREFIX=${LIBALF_DIR} CXXFLAGS=-std=c++14 make -C libalf install
+                               PREFIX ${LIBALF_DIR}
+                               BUILD_BYPRODUCTS ${LIBALF_DIR}/lib/libalf.a ${LIBALF_DIR}/lib/libAMoRE.a ${LIBALF_DIR}/lib/libAMoRE++.a)
+ExternalProject_Get_Property(libalf-src INSTALL_DIR)
+add_library(libalf STATIC IMPORTED)
+add_library(libAMoRE STATIC IMPORTED)
+add_library(libAMoRE++ STATIC IMPORTED)
+set_target_properties(libalf PROPERTIES IMPORTED_LOCATION ${LIBALF_DIR}/lib/libalf.a)
+set_target_properties(libAMoRE PROPERTIES IMPORTED_LOCATION ${LIBALF_DIR}/lib/libAMoRE.a)
+set_target_properties(libAMoRE++ PROPERTIES IMPORTED_LOCATION ${LIBALF_DIR}/lib/libAMoRE++.a)
+
+file(GLOB SRC CONFIGURE_DEPENDS "../../src/*.cpp" "../../src/aarch64/*.cpp" "../../src/decoders/*.cpp" "../../src/dto/*.cpp")
 message(STATUS "Source files:")
 foreach (_s ${SRC})
     get_filename_component(_s "${_s}" ABSOLUTE)
     message(STATUS "${_s}")
 endforeach()
 
-add_library(prtracer-objects OBJECT ${SRC})
+add_library(ptracer-objects OBJECT ${SRC})
 # shared libraries need PIC
-set_target_properties(prtracer-objects PROPERTIES POSITION_INDEPENDENT_CODE 1
-                                                  CXX_STANDARD 23)
+set_target_properties(ptracer-objects PROPERTIES POSITION_INDEPENDENT_CODE 1
+                                                  CXX_STANDARD 23
+)
+add_dependencies(ptracer-objects libalf-src)
 
-add_executable(ptracer $<TARGET_OBJECTS:prtracer-objects>)
+add_executable(ptracer $<TARGET_OBJECTS:ptracer-objects>)
+add_dependencies(ptracer libalf-src)
 # Build shared library
-add_library(ptracer-shared SHARED $<TARGET_OBJECTS:prtracer-objects>)
+add_library(ptracer-shared SHARED $<TARGET_OBJECTS:ptracer-objects>)
 set_target_properties(ptracer-shared PROPERTIES VERSION ${PROJECT_VERSION}
                                                 PUBLIC_HEADER ../../src/TracingManager.h)
 install(TARGETS ptracer-shared
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
         PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+add_dependencies(ptracer-shared libalf-src)
 # Build static library
-add_library(ptracer-static STATIC $<TARGET_OBJECTS:prtracer-objects>)
+add_library(ptracer-static STATIC $<TARGET_OBJECTS:ptracer-objects>)
 set_target_properties(ptracer-static PROPERTIES VERSION ${PROJECT_VERSION}
                                                 PUBLIC_HEADER ../../src/TracingManager.h)
 install(TARGETS ptracer-static
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
         PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+add_dependencies(ptracer-static libalf-src)
 
-#Boost::program_options Boost::thread
-target_link_libraries(ptracer PRIVATE ${CONAN_LIBS} unwindstack lzma)
-target_link_libraries(ptracer-shared PRIVATE ${CONAN_LIBS} unwindstack lzma)
-target_link_libraries(ptracer-static PRIVATE ${CONAN_LIBS} unwindstack lzma)
+target_link_libraries(ptracer PRIVATE ${CONAN_LIBS} unwindstack lzma libalf libAMoRE libAMoRE++)
+target_link_libraries(ptracer-shared PRIVATE ${CONAN_LIBS} unwindstack lzma libalf libAMoRE libAMoRE++)
+target_link_libraries(ptracer-static PRIVATE ${CONAN_LIBS} unwindstack lzma libalf libAMoRE libAMoRE++)
 
 include_directories(${CONAN_INCLUDE_DIRS}
-                    ${libunwindstack-ndk_SOURCE_DIR}/include)
+                    ${libunwindstack-ndk_SOURCE_DIR}/include
+                    ${LIBALF_DIR}/include)
 
 set(EXTRA_FLAGS "-c -Werror -Wall -Wextra -MMD -Wall -Wextra -Wconversion -Wsign-conversion")
 set(EXTRA_FLAGS "-fexceptions -frtti -fstack-protector-all -Wstack-protector -ftrapv -Wno-unused-but-set-variable -Wformat -Wformat-security -D_FORTIFY_SOURCE=2 -U_FORTIFY_SOURCE -fvisibility=hidden -fvisibility-inlines-hidden")

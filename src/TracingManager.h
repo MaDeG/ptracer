@@ -1,5 +1,5 @@
-#ifndef TRACINGMANAGER_H
-#define TRACINGMANAGER_H
+#ifndef PTRACER_TRACINGMANAGER_H
+#define PTRACER_TRACINGMANAGER_H
 #include "ConcurrentQueue.h"
 #include "ProcessNotification.h"
 #include "ProcessSyscallEntry.h"
@@ -11,8 +11,8 @@ public:
   static const int BUFFER_LEN;
   static bool init(std::shared_ptr<Tracer> tracer = nullptr);
   static bool start();
-  static std::shared_ptr<ProcessNotification> next_notification();
-  static bool authorise(std::shared_ptr<ProcessSyscallEntry> state);
+  static std::shared_ptr<ProcessNotification> nextNotification();
+  static bool authorize(std::shared_ptr<ProcessSyscallEntry> state);
   static bool add_tracer(std::shared_ptr<Tracer> tracer);
   static bool kill_process(int spid = -1);
   static bool is_running();
@@ -39,4 +39,4 @@ private:
   TracingManager() = default;;
 };
 
-#endif /* TRACINGMANAGER_H */
+#endif /* PTRACER_TRACINGMANAGER_H */

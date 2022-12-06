@@ -1,9 +1,8 @@
-#ifndef PROCESSSTATE_H
-#define PROCESSSTATE_H
+#ifndef PTRACER_PROCESSSYSCALLENTRY
+#define PTRACER_PROCESSSYSCALLENTRY
 #include <memory>
 #include <set>
 #include "Tracer.h"
-#include "FunctionOffset.h"
 #include "Registers.h"
 #include "ProcessNotification.h"
 
@@ -28,15 +27,15 @@ public:
   [[nodiscard]] pid_t getChildPid() const;
   [[nodiscard]] std::shared_ptr<Tracer> getTracer() const;
 	[[nodiscard]] unsigned long long int argument(unsigned short int i) const;
+	[[nodiscard]] const std::vector<StackFrame>& getStackFrames() const;
 
 private:
   std::shared_ptr<Tracer> tracer;
   long long int returnValue = -ENOSYS;
   std::shared_ptr<Registers> regs = nullptr;
 	std::vector<StackFrame> stackFrames;
-  //std::vector<unsigned long long int> callParams;
   pid_t childPid = -1;
   void setRegisters(std::shared_ptr<Registers> regs);
 };
 
-#endif /* PROCESSSTATE_H */
+#endif /* PTRACER_PROCESSSYSCALLENTRY */

@@ -1,5 +1,5 @@
-#ifndef TRACER_H
-#define TRACER_H
+#ifndef PTRACER_TRACER_H
+#define PTRACER_TRACER_H
 #define PERROR(message) do { \
                           perror((string(const_cast< char *>(__func__)) + \
                                   "@" + to_string(__LINE__) + \
@@ -97,4 +97,4 @@ private:
   std::shared_ptr<siginfo_t> handleSignal(int status) const;
 };
 
-#endif // TRACER_H
+#endif // PTRACER_TRACER_H

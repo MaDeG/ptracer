@@ -16,6 +16,11 @@ const string Launcher::FOLLOW_THREADS_OPT = "follow-threads";
 const string Launcher::FOLLOW_CHILDREN_OPT = "follow-children";
 const string Launcher::JAIL_OPT = "jail";
 const string Launcher::BACKTRACE_OPT = "backtrace";
+const string Launcher::AUTHORIZER_OPT = "authorizer";
+const string Launcher::LEARN_OPT = "learn";
+const string Launcher::NFA_PATH_OPT = "nfa";
+const string Launcher::DOT_PATH_OPT = "dot";
+const string Launcher::ASSOCIATIONS_PATH_OPT = "associations";
 
 void terminationHandler(int signum) {
 	cout << "Termination signal received" << endl;
@@ -40,21 +45,30 @@ Launcher::Launcher(int argc, const char** argv) {
 			(Launcher::FOLLOW_CHILDREN_OPT.c_str(), value<bool>()->default_value(true), "Trace also child processes")
 			(Launcher::JAIL_OPT.c_str(), value<bool>()->default_value(false), "Kill the traced process and all its children if ptracer is killed")
 			(Launcher::BACKTRACE_OPT.c_str(), value<bool>()->default_value(true), "Extract the full stacktrace that lead to a systemcall")
+			(Launcher::AUTHORIZER_OPT.c_str(), value<bool>()->default_value(false), "Enable or disables the Authorizer module and all its options")
+			(Launcher::LEARN_OPT.c_str(), value<bool>()->default_value(true), "Sets the Authorizer module in learning mode")
+			(Launcher::NFA_PATH_OPT.c_str(), value<string>(), "Specifies the path where the NFA managed by the Auhtorizer is present or will be created")
+			(Launcher::DOT_PATH_OPT.c_str(), value<string>(), "Specifies the path where the DOT representation of the NFA managed by the Auhtorizer will be created")
+			(Launcher::ASSOCIATIONS_PATH_OPT.c_str(), value<string>(), "Specifies the path where the associations between state IDs and System Calls is present or will be created by the Authorizer")
 	;
 	parsed_options parsed = command_line_parser(argc, argv).options(description)
 																												 .allow_unregistered()
 																												 .run();
 	boost::program_options::variables_map option_values;
-	store(parsed, option_values);
-	notify(option_values);
-	if (option_values.count(Launcher::HELP_OPT)) {
+	try {
+		store(parsed, option_values);
+		notify(option_values);
+	} catch (boost::program_options::error& e) {
+		throw runtime_error(string(e.what()));
+	}
+	if (option_values.contains(Launcher::HELP_OPT)) {
 		cout << Launcher::PROGRAM_NAME << " - " << Launcher::PROGRAM_DESC << endl;
 		cout << description << endl;
 		return;
 	}
-	if (option_values.count(Launcher::PID_OPT) > 0) {
+	if (option_values.contains(Launcher::PID_OPT)) {
 		this->traced_pid = option_values[Launcher::PID_OPT].as<long>();
-	} else if (option_values.count(Launcher::RUN_OPT) > 0) {
+	} else if (option_values.contains(Launcher::RUN_OPT)) {
 		for (int i = 1; i < argc; i++) {
 			if (!strcmp(argv[i], ("--" + Launcher::RUN_OPT).c_str())) {
 				this->tracee_argv = (char**) &argv[i + 1];
@@ -62,13 +76,22 @@ Launcher::Launcher(int argc, const char** argv) {
 			}
 		}
 	}
-	/*else {
-		throw runtime_error("Either a PID or a command to run must be specified! Use the -h option for help.");
-	}*/
+	else {
+		throw runtime_error("Either a PID or a command to run must be specified! Use the -h option for help");
+	}
 	this->follow_threads = option_values[Launcher::FOLLOW_THREADS_OPT].as<bool>();
 	this->follow_children = option_values[Launcher::FOLLOW_CHILDREN_OPT].as<bool>();
 	this->tracee_jail = option_values[Launcher::JAIL_OPT].as<bool>();
 	this->backtrace = option_values[Launcher::BACKTRACE_OPT].as<bool>();
+	if (option_values[Launcher::AUTHORIZER_OPT].as<bool>()) {
+		if (!option_values.contains(Launcher::NFA_PATH_OPT) || !option_values.contains(Launcher::ASSOCIATIONS_PATH_OPT)) {
+			throw runtime_error("The Authorizer module requires to specify a path where the NFA is saved and retrieved (if exists) and a path where to store the IDs <-> syscalls associations");
+		}
+		this->authorizer = make_unique<Authorizer>(option_values[Launcher::NFA_PATH_OPT].as<string>(),
+		                                           option_values[Launcher::ASSOCIATIONS_PATH_OPT].as<string>(),
+		                                           option_values[Launcher::LEARN_OPT].as<bool>());
+		this->dotPath = option_values[Launcher::DOT_PATH_OPT].as<string>();
+	}
 }
 
 void Launcher::start() {
@@ -79,6 +102,11 @@ void Launcher::start() {
 	cout << "Follow threads: " << (this->follow_threads ? "true" : "false") << endl;
 	cout << "Follow children: " << (this->follow_children ? "true" : "false") << endl;
 	cout << "Tracee jail: " << (this->tracee_jail ? "true" : "false") << endl;
+	cout << "Authorizer module is " << (this->authorizer ? "active" : "NOT active") << endl;
+	if (this->authorizer) {
+		cout << string(*this->authorizer);
+		cout << "DOT Output: " << this->dotPath << endl;
+	}
 	if (this->tracee_argv != nullptr) {
 		cout << "Executable to trace: " << this->tracee_argv[0] << endl;
 		cout << "Parameters to pass:" << endl;
@@ -104,22 +132,27 @@ void Launcher::start() {
 	}
 	signal(SIGINT, terminationHandler);
 	TracingManager::start();
-	this->print_syscalls();
+	this->processSyscalls();
 }
 
-void Launcher::print_syscalls() const {
+void Launcher::processSyscalls() const {
 	shared_ptr<ProcessNotification> notification;
-	while ((notification = TracingManager::next_notification()) != nullptr) {
+	while ((notification = TracingManager::nextNotification()) != nullptr) {
+		// TODO: There should be no need to cast down
+		// TODO: Find a better way to register syscalls to the Authorizer module as well as the Decoders
 		shared_ptr<ProcessSyscallEntry> syscall = dynamic_pointer_cast<ProcessSyscallEntry>(notification);
 		notification->print();
-		// TODO: There should be no need to cast down
-		if (syscall) {
+		if (this->authorizer) {
+			this->authorizer->process(notification);
+		} else if (syscall) {
 			shared_ptr<ProcessSyscallEntry> entry = dynamic_pointer_cast<ProcessSyscallEntry>(notification);
-			TracingManager::authorise(entry);
-			/*cout << syscall->getTimestamp() << " - ";
-			cout << "PID: " << syscall->getPid() << " - ";
-			cout << "SPID: " << syscall->getSpid() << " - ";
-			cout << "Syscall: " << syscall->getSyscall() << endl;*/
+			TracingManager::authorize(entry);
+		}
+	}
+	if (this->authorizer) {
+		this->authorizer->terminate();
+		if (!this->dotPath.empty()) {
+			this->authorizer->dotOutput(this->dotPath);
 		}
 	}
 	SyscallDecoderMapper::printReport();

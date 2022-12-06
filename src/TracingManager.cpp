@@ -75,12 +75,12 @@ bool TracingManager::start() {
  * 
  * @return A reference to the first ProcessState in the queue.
  */
-shared_ptr<ProcessNotification> TracingManager::next_notification() {
+shared_ptr<ProcessNotification> TracingManager::nextNotification() {
   return TracingManager::notification_queue.pop();
 }
 
 /**
- * Method called only by ProcessState::authorise in order to unblock the tracer of SPID
+ * Method called only by ProcessState::authorize in order to unblock the tracer of SPID
  * until the next syscall.
  * This will send a SIGUSR1 signal to the worker thread that will be stopped in order to
  * handle the queue of authorised tracees.
@@ -88,7 +88,7 @@ shared_ptr<ProcessNotification> TracingManager::next_notification() {
  * @param spid The process SPID or (Thread ID) that will be authorised to proceed.
  * @return True if the syscall has already been authorised or the worker thread was successfully notified, False otherwise.
  */
-bool TracingManager::authorise(shared_ptr<ProcessSyscallEntry> state) {
+bool TracingManager::authorize(shared_ptr<ProcessSyscallEntry> state) {
   if (!state->authorise()) {
 		// Already authorised
 		return true;
@@ -248,6 +248,7 @@ bool TracingManager::handle_syscall(pid_t spid, int status) {
       // System call exit managed
       break;
     case Tracer::WAIT_FOR_AUTHORISATION:
+			// Syscall decoding needs to happen here since it might require extracting memory from the tracee and that can be done only from the tracer SPID
 			// TODO: The if below should not be here
 			if (TracingManager::tracers[spid]->entryState) {
 				SyscallDecoderMapper::decode(*TracingManager::tracers[spid]->entryState);
@@ -386,7 +387,7 @@ bool TracingManager::signalhandler_install() {
 /**
  * This is the signal handler that is called every time a SIGUSR1 is received therefore
  * it is called every time a new syscall is authorised by the Authoriser.
- * It will iterate over the authorised tracees queue and for each element will authorise
+ * It will iterate over the authorised tracees queue and for each element will authorize
  * the linked Tracer to proceed until the next syscall.
  * 
  * @param signal The signal that has triggered the execution of this method.
@@ -403,7 +404,7 @@ void TracingManager::handle_authorised(int signal) {
     }
     current_state->authorise();
     if (current_state->getTracer()->proceed() == Tracer::PTRACE_ERROR) {
-      cerr << "Impossible to successfully authorise the state: " << endl;
+      cerr << "Impossible to successfully authorize the state: " << endl;
       current_state->print();
     }
   }

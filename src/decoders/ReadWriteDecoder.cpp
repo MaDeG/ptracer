@@ -10,9 +10,11 @@ using namespace std;
 const filesystem::path ReadWriteDecoder::root{"./ReadWriteDecoder"};
 
 const set<int> ReadWriteDecoder::WRITE_SYSCALLS = {SYS_write,
-																									 SYS_sendmsg,
-																									 SYS_sendmmsg,
-																									 SYS_sendto
+																									 // SYS_sendmsg,
+																									 // SYS_sendmmsg, Need to interpret const struct msghdr* msg
+																									 // SYS_preadv
+																									 SYS_sendto,
+																									 SYS_pread64,
 #ifdef SYS_send
 																							     SYS_send
 #endif
@@ -28,7 +30,7 @@ const set<int> ReadWriteDecoder::READ_SYSCALLS = {SYS_read,
 };
 
 bool ReadWriteDecoder::decode(const ProcessSyscallEntry& syscall) {
-	ofstream * out = nullptr;
+	ofstream* out;
 	if (ReadWriteDecoder::isWrite(syscall.getSyscall())) {
 		out = ReadWriteDecoder::getOfstream(syscall, this->writeOutputs, "-write");
 	} else {

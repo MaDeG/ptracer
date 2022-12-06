@@ -5,8 +5,8 @@
  * Created on 14 January 2017, 16:43
  */
 
-#ifndef PROCESSTERMINATION_H
-#define PROCESSTERMINATION_H
+#ifndef PTRACER_PROCESSTERMINATION_H
+#define PTRACER_PROCESSTERMINATION_H
 
 #include "ProcessNotification.h"
 
@@ -23,4 +23,4 @@ private:
   int returnValue;
 };
 
-#endif /* PROCESSTERMINATION_H */
+#endif /* PTRACER_PROCESSTERMINATION_H */
