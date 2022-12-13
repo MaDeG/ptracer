@@ -9,10 +9,18 @@ on:
 jobs:
   build:
 
-    runs-on: conanio/android-clang8-armv8
+    runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v3
+    - name: Get Conan
+      uses: turtlebrowser/get-conan@v1.0
+    - name: Cache Conan packages
+      id: conan-aarch64-cache
+      uses: actions/cache@v3
+      with:
+        path: ~/.conan/data
+        key: ${{ runner.os }}-aarch64-conanpackages-${{ hashFiles('./build/aarch64/conanfile.txt') }}
     - name: conan-aarch64
       run: mkdir ./build/aarch64/cmake-build-release && cd ./build/aarch64/cmake-build-release && conan install ../conanfile.txt --profile:build ../build.profile --profile:host ../armv8.profile
     - name: cmake-aarch64
