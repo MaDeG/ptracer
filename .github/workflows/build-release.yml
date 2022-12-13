@@ -1,0 +1,27 @@
+name: Build Release
+
+on:
+  push:
+    branches: [ "github-actions" ]
+  pull_request:
+    branches: [ "github-actions" ]
+
+jobs:
+  build:
+
+    runs-on: conanio/android-clang8-armv8
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: conan-aarch64
+      run: mkdir ./build/aarch64/cmake-build-release && cd ./build/aarch64/cmake-build-release && conan install ../conanfile.txt --profile:build ../build.profile --profile:host ../armv8.profile
+    - name: cmake-aarch64
+      run: cmake .. -DCMAKE_TOOLCHAIN_FILE=conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release
+    - name: make-aarch64
+      run: make
+#    - name: conan-x86
+#      run: cd - && mkdir ./build/x86_64/cmake-build-release && cd ./build/x86_64/cmake-build-release && conan install ../conanfile.txt --profile:build ../build.profile --profile:host ../armv8.profile
+#    - name: cmake-x86
+#      run: cmake .. -DCMAKE_BUILD_TYPE=Release
+#    - name: make-x86
+#      run: make
