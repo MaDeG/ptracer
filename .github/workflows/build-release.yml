@@ -43,7 +43,9 @@ jobs:
       run: conan install ../conanfile.txt --profile:build ../build.profile --profile:host ../armv8.profile --build missing
     - name: cmake-aarch64
       working-directory: ./build/aarch64/cmake-build-release
-      run: cmake .. -DCMAKE_TOOLCHAIN_FILE=conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release
+      run: |
+        eval `ssh-agent -s`
+        cmake .. -DCMAKE_TOOLCHAIN_FILE=conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release
     - name: make-aarch64
       working-directory: ./build/aarch64/cmake-build-release
       run: make
