@@ -13,9 +13,24 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    - name: import-ssh-keys
+      run: |
+        eval `ssh-agent -s`
+        ssh-add - <<< '${{ secrets.LIBARTBASE_PRIVATE_SSH_KEY }}'
+        ssh-add - <<< '${{ secrets.LIBARTPALETTE_PRIVATE_SSH_KEY }}'
+        ssh-add - <<< '${{ secrets.LIBBASE_PRIVATE_SSH_KEY }}'
+        ssh-add - <<< '${{ secrets.LIBCUTILS_PRIVATE_SSH_KEY }}'
+        ssh-add - <<< '${{ secrets.LIBDEXFILE_PRIVATE_SSH_KEY }}'
+        ssh-add - <<< '${{ secrets.LIBLOG_PRIVATE_SSH_KEY }}'
+        ssh-add - <<< '${{ secrets.LIBSYSTEM_PRIVATE_SSH_KEY }}'
+        ssh-add - <<< '${{ secrets.LIBTINYXML2_PRIVATE_SSH_KEY }}'
+        ssh-add - <<< '${{ secrets.LIBUNWINDSTACK_PRIVATE_SSH_KEY }}'
+        ssh-add - <<< '${{ secrets.LIBUTILS_PRIVATE_SSH_KEY }}'
+        ssh-add - <<< '${{ secrets.LIBZIPARCHIVE_PRIVATE_SSH_KEY }}'
+        ssh-add - <<< '${{ secrets.LZMA_PRIVATE_SSH_KEY }}'
     - name: Get Conan
       uses: turtlebrowser/get-conan@v1.0
-    - name: Cache Conan packages
+    - name: cache-conan-packages
       id: conan-aarch64-cache
       uses: actions/cache@v3
       with:
