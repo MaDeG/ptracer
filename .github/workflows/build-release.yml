@@ -63,7 +63,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        upload_url: ${{ steps.create-release.outputs.upload_url }}
+        upload_url: ${{ steps.create-release-aarch64.outputs.upload_url }}
         asset_path: ./build/aarch64/cmake-build-release/bin/ptracer
         asset_name: ptracer
         asset_content_type: application/x-elf
