@@ -21,11 +21,16 @@ jobs:
       with:
         path: ~/.conan/data
         key: ${{ runner.os }}-aarch64-conanpackages-${{ hashFiles('./build/aarch64/conanfile.txt') }}
+    - name: make-aarch64-build-directory
+      run: mkdir ./build/aarch64/cmake-build-release
     - name: conan-aarch64
-      run: mkdir ./build/aarch64/cmake-build-release && cd ./build/aarch64/cmake-build-release && conan install ../conanfile.txt --profile:build ../build.profile --profile:host ../armv8.profile --build missing
+      working-directory: ./build/aarch64/cmake-build-release
+      run: conan install ../conanfile.txt --profile:build ../build.profile --profile:host ../armv8.profile --build missing
     - name: cmake-aarch64
+      working-directory: ./build/aarch64/cmake-build-release
       run: cmake .. -DCMAKE_TOOLCHAIN_FILE=conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release
     - name: make-aarch64
+      working-directory: ./build/aarch64/cmake-build-release
       run: make
 #    - name: conan-x86
 #      run: cd - && mkdir ./build/x86_64/cmake-build-release && cd ./build/x86_64/cmake-build-release && conan install ../conanfile.txt --profile:build ../build.profile --profile:host ../armv8.profile
