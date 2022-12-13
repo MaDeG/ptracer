@@ -30,23 +30,43 @@ jobs:
           ${{ secrets.LZMA_PRIVATE_SSH_KEY }}
     - name: Get Conan
       uses: turtlebrowser/get-conan@v1.0
-    - name: cache-conan-packages
+    - name: Cache Conan Packages
       id: conan-aarch64-cache
       uses: actions/cache@v3
       with:
         path: ~/.conan/data
         key: ${{ runner.os }}-aarch64-conanpackages-${{ hashFiles('./build/aarch64/conanfile.txt') }}
-    - name: make-aarch64-build-directory
+    - name: Create AARCH64 Build Directory
       run: mkdir ./build/aarch64/cmake-build-release
-    - name: conan-aarch64
+    - name: Run Conan for AARCH64
       working-directory: ./build/aarch64/cmake-build-release
       run: conan install ../conanfile.txt --profile:build ../build.profile --profile:host ../armv8.profile --build missing
-    - name: cmake-aarch64
+    - name: Run CMake for AARCH64
       working-directory: ./build/aarch64/cmake-build-release
       run: cmake .. -DCMAKE_TOOLCHAIN_FILE=conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release
-    - name: make-aarch64
+    - name: Make for AARCH64
       working-directory: ./build/aarch64/cmake-build-release
       run: make
+    - name: Create release for AARCH64
+      id: create-release-aarch64
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.run_number }}-${{ github.ref }}-${{ github.sha }}
+        release_name: Release ${{ github.run_number }}-${{ github.ref }}-${{ github.sha }}
+        draft: false
+        prerelease: true
+    - name: Upload Release for AARCH64 - Executable
+      id: upload-release-aarch64-exe
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create-release.outputs.upload_url }}
+        asset_path: ./build/aarch64/cmake-build-release/bin/ptracer
+        asset_name: ptracer
+        asset_content_type: application/x-elf
 #    - name: conan-x86
 #      run: cd - && mkdir ./build/x86_64/cmake-build-release && cd ./build/x86_64/cmake-build-release && conan install ../conanfile.txt --profile:build ../build.profile --profile:host ../armv8.profile
 #    - name: cmake-x86
