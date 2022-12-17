@@ -2,9 +2,9 @@ name: Build Release
 
 on:
   push:
-    branches: [ "github-actions" ]
+    branches: [ "pipeline-wrong-compiler-fix" ]
   pull_request:
-    branches: [ "github-actions" ]
+    branches: [ "pipeline-wrong-compiler-fix" ]
 
 jobs:
   build:
