@@ -77,7 +77,7 @@ Launcher::Launcher(int argc, const char** argv) {
 		}
 	}
 	else {
-		throw runtime_error("Either a PID or a command to run must be specified! Use the -h option for help");
+		throw runtime_error("Either a PID or a command to run must be specified! Use the --help option to see a list of available parameters");
 	}
 	this->follow_threads = option_values[Launcher::FOLLOW_THREADS_OPT].as<bool>();
 	this->follow_children = option_values[Launcher::FOLLOW_CHILDREN_OPT].as<bool>();

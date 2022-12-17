@@ -1,5 +1,6 @@
 #!/bin/bash
 
+cd "$(dirname "$0")"
 mkdir -p cmake-build-debug
 cd cmake-build-debug
 conan install ../conanfile.txt --profile:build ../build.profile --profile:host ../armv8.profile
