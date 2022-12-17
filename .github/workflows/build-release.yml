@@ -49,7 +49,7 @@ jobs:
       run: mkdir ./build/aarch64/cmake-build-release
     - name: Run Conan for AARCH64
       working-directory: ./build/aarch64/cmake-build-release
-      run: conan install ../conanfile.txt --profile:build default --profile:host ../armv8.profile --build missing
+      run: conan install ../conanfile.txt --profile:build default --profile:host ../armv8-existing-ndk.profile --build missing
     - name: Run CMake for AARCH64
       working-directory: ./build/aarch64/cmake-build-release
       run: cmake .. -DCMAKE_TOOLCHAIN_FILE=conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release

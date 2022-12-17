@@ -1,0 +1,13 @@
+include(default)
+[settings]
+arch=armv8
+os=Android
+build_type=Release
+compiler=clang
+compiler.libcxx=c++_static
+compiler.version=14
+os.api_level=30
+[tool_requires]
+[options]
+[env]
+CONAN_CMAKE_ANDROID_NDK=/usr/local/lib/android/sdk/ndk/25.1.8937393
