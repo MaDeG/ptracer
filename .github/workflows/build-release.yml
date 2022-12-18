@@ -10,6 +10,7 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
+    container: fedora:37
 
     steps:
     - uses: actions/checkout@v3
@@ -28,8 +29,10 @@ jobs:
           ${{ secrets.LIBUTILS_PRIVATE_SSH_KEY }}
           ${{ secrets.LIBZIPARCHIVE_PRIVATE_SSH_KEY }}
           ${{ secrets.LZMA_PRIVATE_SSH_KEY }}
+    - name: Get CMake and Pip
+      run: dnf install -y cmake pip
     - name: Get Conan
-      uses: turtlebrowser/get-conan@v1.0
+      run: pip install conan
     - name: Cache Conan Packages
       id: conan-aarch64-cache
       uses: actions/cache@v3
@@ -40,7 +43,7 @@ jobs:
       run: mkdir ./build/aarch64/cmake-build-release
     - name: Run Conan for AARCH64
       working-directory: ./build/aarch64/cmake-build-release
-      run: export CC=$ANDROID_NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android30-clang && export CXX=$ANDROID_NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android30-clang++ && conan install ../conanfile.txt --profile:build default --profile:host ../armv8.profile --build missing
+      run: conan install ../conanfile.txt --profile:build default --profile:host ../armv8.profile --build missing
     - name: Run CMake for AARCH64
       working-directory: ./build/aarch64/cmake-build-release
       run: cmake .. -DCMAKE_TOOLCHAIN_FILE=conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release
