@@ -10,11 +10,8 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
-    container: fedora:37
 
     steps:
-    - name: Get CMake, Pip, SSH-Agent, Git and Clang
-      run: dnf install -y cmake pip openssh-clients git clang
     - uses: actions/checkout@v3
     - uses: webfactory/ssh-agent@v0.7.0
       with:
@@ -32,7 +29,7 @@ jobs:
           ${{ secrets.LIBZIPARCHIVE_PRIVATE_SSH_KEY }}
           ${{ secrets.LZMA_PRIVATE_SSH_KEY }}
     - name: Get Conan
-      run: pip install conan
+      uses: turtlebrowser/get-conan@v1.0
     - name: Cache Conan Packages
       id: conan-aarch64-cache
       uses: actions/cache@v3
@@ -44,7 +41,7 @@ jobs:
       run: mkdir ./build/aarch64/cmake-build-release
     - name: Run Conan for AARCH64
       working-directory: ./build/aarch64/cmake-build-release
-      run: conan install ../conanfile.txt --profile:build ../build.profile --profile:host ../armv8.profile --build missing
+      run: conan install ../conanfile.txt --profile:build default --profile:host ../armv8.profile --build missing
     - name: Run CMake for AARCH64
       working-directory: ./build/aarch64/cmake-build-release
       run: cmake .. -DCMAKE_TOOLCHAIN_FILE=conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release
