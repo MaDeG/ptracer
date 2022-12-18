@@ -13,7 +13,7 @@ jobs:
     container: fedora:37
 
     steps:
-    - name: Get CMake and Pip and SSH-Agent
+    - name: Get CMake, Pip, SSH-Agent adn Git
       run: dnf install -y cmake pip openssh-clients
     - uses: actions/checkout@v3
     - uses: webfactory/ssh-agent@v0.7.0
