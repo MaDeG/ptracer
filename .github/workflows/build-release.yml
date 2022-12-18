@@ -10,7 +10,6 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
-    container: node:14.16
 
     steps:
     - uses: actions/checkout@v3
