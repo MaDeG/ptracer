@@ -38,7 +38,8 @@ jobs:
       uses: actions/cache@v3
       with:
         path: ~/.conan/data
-        key: ${{ runner.os }}-aarch64-conanpackages-${{ hashFiles('./build/aarch64/conanfile.txt') }}
+#        key: ${{ runner.os }}-aarch64-conanpackages-${{ hashFiles('./build/aarch64/conanfile.txt') }}
+        key: Linux-aarch64-conanpackages-d085438f44d3af25dda422108eef018492bfbfd96d541d7e75045ab77da40a2c
     - name: Create AARCH64 Build Directory
       run: mkdir ./build/aarch64/cmake-build-release
     - name: Run Conan for AARCH64
