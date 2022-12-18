@@ -40,7 +40,7 @@ jobs:
       run: mkdir ./build/aarch64/cmake-build-release
     - name: Run Conan for AARCH64
       working-directory: ./build/aarch64/cmake-build-release
-      run: export CC=/25.0.8775105/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android30-clang && export CXX=/25.0.8775105/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android30-clang++ && conan install ../conanfile.txt --profile:build default --profile:host ../armv8.profile --build missing
+      run: export CC=$ANDROID_NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android30-clang && export CXX=$ANDROID_NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android30-clang++ && conan install ../conanfile.txt --profile:build default --profile:host ../armv8.profile --build missing
     - name: Run CMake for AARCH64
       working-directory: ./build/aarch64/cmake-build-release
       run: cmake .. -DCMAKE_TOOLCHAIN_FILE=conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release
