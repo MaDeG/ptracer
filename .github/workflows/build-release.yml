@@ -7,128 +7,187 @@ on:
     branches: [ "*" ]
 
 jobs:
-  setup:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-    - uses: webfactory/ssh-agent@v0.7.0
-      with:
-        ssh-private-key: |
-          ${{ secrets.LIBARTBASE_PRIVATE_SSH_KEY }}
-          ${{ secrets.LIBARTPALETTE_PRIVATE_SSH_KEY }}
-          ${{ secrets.LIBBASE_PRIVATE_SSH_KEY }}
-          ${{ secrets.LIBCUTILS_PRIVATE_SSH_KEY }}
-          ${{ secrets.LIBDEXFILE_PRIVATE_SSH_KEY }}
-          ${{ secrets.LIBLOG_PRIVATE_SSH_KEY }}
-          ${{ secrets.LIBSYSTEM_PRIVATE_SSH_KEY }}
-          ${{ secrets.LIBTINYXML2_PRIVATE_SSH_KEY }}
-          ${{ secrets.LIBUNWINDSTACK_PRIVATE_SSH_KEY }}
-          ${{ secrets.LIBUTILS_PRIVATE_SSH_KEY }}
-          ${{ secrets.LIBZIPARCHIVE_PRIVATE_SSH_KEY }}
-          ${{ secrets.LZMA_PRIVATE_SSH_KEY }}
-    - name: Get Conan
-      uses: turtlebrowser/get-conan@v1.0
-    - name: Cache Conan Packages
-      id: conan-aarch64-cache
-      uses: actions/cache@v3
-      with:
-        path: ~/.conan/data
-        key: ${{ runner.os }}-aarch64-conanpackages-${{ hashFiles('./build/aarch64/conanfile.txt') }}-${{ hashFiles('./build/x86_64/conanfile.txt') }}
-
   build-aarch64:
     runs-on: ubuntu-latest
-    needs: setup
     steps:
-    - name: Build Custom Conan Boost Recipe
-      working-directory: ./build/aarch64
-      run: |
-        if ! conan search boost/1.80.0@madeg/boost; then
-          conan create ./boost-conan-recipe madeg/boost --profile:build default --profile:host armv8.profile --build missing
-        fi
-    - name: Create AARCH64 Build Directory
-      run: mkdir ./build/aarch64/cmake-build-release
-    - name: Run Conan for AARCH64
-      working-directory: ./build/aarch64/cmake-build-release
-      run: conan install ../conanfile.txt --profile:build default --profile:host ../armv8.profile --build missing
-    - name: Run CMake for AARCH64
-      working-directory: ./build/aarch64/cmake-build-release
-      run: cmake .. -DCMAKE_TOOLCHAIN_FILE=conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release
-    - name: Make for AARCH64
-      working-directory: ./build/aarch64/cmake-build-release
-      run: make
+      - uses: actions/checkout@v3
+      - uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: |
+            ${{ secrets.LIBARTBASE_PRIVATE_SSH_KEY }}
+            ${{ secrets.LIBARTPALETTE_PRIVATE_SSH_KEY }}
+            ${{ secrets.LIBBASE_PRIVATE_SSH_KEY }}
+            ${{ secrets.LIBCUTILS_PRIVATE_SSH_KEY }}
+            ${{ secrets.LIBDEXFILE_PRIVATE_SSH_KEY }}
+            ${{ secrets.LIBLOG_PRIVATE_SSH_KEY }}
+            ${{ secrets.LIBSYSTEM_PRIVATE_SSH_KEY }}
+            ${{ secrets.LIBTINYXML2_PRIVATE_SSH_KEY }}
+            ${{ secrets.LIBUNWINDSTACK_PRIVATE_SSH_KEY }}
+            ${{ secrets.LIBUTILS_PRIVATE_SSH_KEY }}
+            ${{ secrets.LIBZIPARCHIVE_PRIVATE_SSH_KEY }}
+            ${{ secrets.LZMA_PRIVATE_SSH_KEY }}
+      - name: Get Conan
+        uses: turtlebrowser/get-conan@v1.0
+      - name: Cache Conan Packages
+        id: conan-aarch64-cache
+        uses: actions/cache@v3
+        with:
+          path: ~/.conan/data
+          key: ${{ runner.os }}-aarch64-conanpackages-${{ hashFiles('./build/aarch64/conanfile.txt') }}
+      - name: Build Custom Conan Boost Recipe
+        working-directory: ./build/aarch64
+        run: |
+          if ! conan search boost/1.80.0@madeg/boost; then
+            conan create ./boost-conan-recipe madeg/boost --profile:build default --profile:host armv8.profile --build missing
+          fi
+      - name: Create AARCH64 Build Directory
+        run: mkdir ./build/aarch64/cmake-build-release
+      - name: Run Conan for AARCH64
+        working-directory: ./build/aarch64/cmake-build-release
+        run: conan install ../conanfile.txt --profile:build default --profile:host ../armv8.profile --build missing
+      - name: Run CMake for AARCH64
+        working-directory: ./build/aarch64/cmake-build-release
+        run: cmake .. -DCMAKE_TOOLCHAIN_FILE=conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release
+      - name: Make for AARCH64
+        working-directory: ./build/aarch64/cmake-build-release
+        run: make
+      - name: Upload Executable for AARCH64
+        uses: actions/upload-artifact@v2
+        with:
+          name: ptracer-aarch64
+          path: ./build/aarch64/cmake-build-release/bin/ptracer
+      - name: Upload Static Library for AARCH64
+        uses: actions/upload-artifact@v2
+        with:
+          name: libptracer-static-aarch64.a
+          path: ./build/aarch64/cmake-build-release/lib/libptracer-static.a
 
   build-x86_64:
     runs-on: ubuntu-latest
     needs: setup
     steps:
-    - name: Create x86_64 Build Directory
-      run: mkdir ./build/x86_64/cmake-build-release
-    - name: Run Conan for x86_64
-      working-directory: ./build/x86_64/cmake-build-release
-      run: conan install ../conanfile.txt --build missing
-    - name: Run CMake for x86_64
-      working-directory: ./build/x86_64/cmake-build-release
-      run: cmake .. -DCMAKE_BUILD_TYPE=Release
-    - name: Make for x86_64
-      working-directory: ./build/x86_64/cmake-build-release
-      run: make
+      - uses: actions/checkout@v3
+      - uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: |
+            ${{ secrets.LIBARTBASE_PRIVATE_SSH_KEY }}
+            ${{ secrets.LIBARTPALETTE_PRIVATE_SSH_KEY }}
+            ${{ secrets.LIBBASE_PRIVATE_SSH_KEY }}
+            ${{ secrets.LIBCUTILS_PRIVATE_SSH_KEY }}
+            ${{ secrets.LIBDEXFILE_PRIVATE_SSH_KEY }}
+            ${{ secrets.LIBLOG_PRIVATE_SSH_KEY }}
+            ${{ secrets.LIBSYSTEM_PRIVATE_SSH_KEY }}
+            ${{ secrets.LIBTINYXML2_PRIVATE_SSH_KEY }}
+            ${{ secrets.LIBUNWINDSTACK_PRIVATE_SSH_KEY }}
+            ${{ secrets.LIBUTILS_PRIVATE_SSH_KEY }}
+            ${{ secrets.LIBZIPARCHIVE_PRIVATE_SSH_KEY }}
+            ${{ secrets.LZMA_PRIVATE_SSH_KEY }}
+      - name: Get Conan
+        uses: turtlebrowser/get-conan@v1.0
+      - name: Cache Conan Packages
+        id: conan-aarch64-cache
+        uses: actions/cache@v3
+        with:
+          path: ~/.conan/data
+          key: ${{ runner.os }}-x86_64-conanpackages-${{ hashFiles('./build/x86_64/conanfile.txt') }}
+      - name: Create x86_64 Build Directory
+        run: mkdir ./build/x86_64/cmake-build-release
+      - name: Run Conan for x86_64
+        working-directory: ./build/x86_64/cmake-build-release
+        run: conan install ../conanfile.txt --build missing
+      - name: Run CMake for x86_64
+        working-directory: ./build/x86_64/cmake-build-release
+        run: cmake .. -DCMAKE_BUILD_TYPE=Release
+      - name: Make for x86_64
+        working-directory: ./build/x86_64/cmake-build-release
+        run: make
+      - name: Upload Executable for x86_64
+        uses: actions/upload-artifact@v2
+        with:
+          name: ptracer-x86_64
+          path: ./build/x86_64/cmake-build-release/bin/ptracer
+      - name: Upload Static Library for x86_64
+        uses: actions/upload-artifact@v2
+        with:
+          name: libptracer-static-x86_64.a
+          path: ./build/x86_64/cmake-build-release/lib/libptracer-static.a
 
   release:
     runs-on: ubuntu-latest
     needs: [ build-aarch64, build-x86_64 ]
     if: github.ref == 'refs/heads/master'
     steps:
-    - name: Create release
-      id: create-release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ptracer-snapshot-${{ github.sha }}
-        release_name: Release Ptracer-SNAPSHOT-${{ github.sha }}
-        body: |
-          Run number: ${{ github.run_number }}
-          Git reference: ${{ github.ref }}
-          Commit Hash: ${{ github.sha }}
-        draft: false
-        prerelease: true
-    - name: Upload Release for AARCH64 - Executable
-      id: upload-release-aarch64-exe
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create-release-aarch64-exe.outputs.upload_url }}
-        asset_path: ./build/aarch64/cmake-build-release/bin/ptracer
-        asset_name: ptracer-aarch64
-        asset_content_type: application/x-elf
-    - name: Upload Release for AARCH64 - Static Library
-      id: upload-release-aarch64-static
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create-release-aarch64-static.outputs.upload_url }}
-        asset_path: ./build/aarch64/cmake-build-release/lib/libptracer-static.a
-        asset_name: libptracer-static-aarch64.a
-        asset_content_type: application/x-elf
-    - name: Upload Release for x86_64 - Executable
-      id: upload-release-x86_64-exe
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create-release-x86_64.outputs.upload_url }}
-        asset_path: ./build/x86_64/cmake-build-release/bin/ptracer
-        asset_name: ptracer-x86_64
-        asset_content_type: application/x-elf
-    - name: Upload Release for x86_64 - Static Library
-      id: upload-release-x86_64-static
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create-release-x86_64-static.outputs.upload_url }}
-        asset_path: ./build/x86_64/cmake-build-release/lib/libptracer-static.a
-        asset_name: libptracer-static-x86_64.a
-        asset_content_type: application/x-elf
+      - name: Download Executable for AARCH64
+        uses: actions/download-artifact@v3
+        with:
+          name: ptracer-aarch64
+          path: ./ptracer-aarch64
+      - name: Download Static Library for AARCH64
+        uses: actions/download-artifact@v3
+        with:
+          name: libptracer-static-aarch64.a
+          path: ./libptracer-static-aarch64.a
+      - name: Download Executable for x86_64
+        uses: actions/download-artifact@v3
+        with:
+          name: ptracer-x86_64
+          path: ./ptracer-x86_64
+      - name: Download Static Library for x86_64
+        uses: actions/download-artifact@v3
+        with:
+          name: libptracer-static-x86_64.a
+          path: ./libptracer-static-x86_64.a
+      - name: Create release
+        id: create-release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ptracer-snapshot-${{ github.sha }}
+          release_name: Release Ptracer-SNAPSHOT-${{ github.sha }}
+          body: |
+            Run number: ${{ github.run_number }}
+            Git reference: ${{ github.ref }}
+            Commit Hash: ${{ github.sha }}
+          draft: false
+          prerelease: true
+      - name: Upload Release for AARCH64 - Executable
+        id: upload-release-aarch64-exe
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create-release-aarch64-exe.outputs.upload_url }}
+          asset_path: ./ptracer-aarch64
+          asset_name: ptracer-aarch64
+          asset_content_type: application/x-elf
+      - name: Upload Release for AARCH64 - Static Library
+        id: upload-release-aarch64-static
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create-release-aarch64-static.outputs.upload_url }}
+          asset_path: ./libptracer-static-aarch64.a
+          asset_name: libptracer-static-aarch64.a
+          asset_content_type: application/x-elf
+      - name: Upload Release for x86_64 - Executable
+        id: upload-release-x86_64-exe
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create-release-x86_64.outputs.upload_url }}
+          asset_path: ./ptracer-x86_64
+          asset_name: ptracer-x86_64
+          asset_content_type: application/x-elf
+      - name: Upload Release for x86_64 - Static Library
+        id: upload-release-x86_64-static
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create-release-x86_64-static.outputs.upload_url }}
+          asset_path: ./libptracer-static-x86_64.a
+          asset_name: libptracer-static-x86_64.a
+          asset_content_type: application/x-elf
