@@ -27,20 +27,24 @@ project(ptracer VERSION 0.1.0
                 HOMEPAGE_URL "https://github.com/MaDeG/ptracer"
                 LANGUAGES CXX)
 
+set (CMAKE_CXX_STANDARD 23)
+
+# There is a Clang version mismatch, boost in Conan Center is compiled using Clang version 13 but the local clang version is 14
+set(CONAN_DISABLE_CHECK_COMPILER)
 include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
 conan_basic_setup()
 
 include(ExternalProject)
 set(LIBALF_DIR ${CMAKE_BINARY_DIR}/libalf)
 ExternalProject_Add(libalf-src GIT_REPOSITORY git@github.com:MaDeG/libalf.git
-                               GIT_TAG master
+                               GIT_TAG integration
                                BUILD_IN_SOURCE TRUE
                                CONFIGURE_COMMAND ""
                                BUILD_COMMAND ""
                                INSTALL_COMMAND mkdir -p ${LIBALF_DIR}/include -p ${LIBALF_DIR}/lib
-                               COMMAND PREFIX=${LIBALF_DIR} make -C libAMoRE install
-                               COMMAND CPPFLAGS=-I${LIBALF_DIR}/include LDFLAGS=-L${LIBALF_DIR}/lib PREFIX=${LIBALF_DIR} CXXFLAGS=-std=c++14 make -C libAMoRE++ install
-                               COMMAND CPPFLAGS=-I${LIBALF_DIR}/include LDFLAGS=-L${LIBALF_DIR}/lib PREFIX=${LIBALF_DIR} CXXFLAGS=-std=c++14 make -C libalf install
+                                       COMMAND PREFIX=${LIBALF_DIR} make -C libAMoRE install
+                                       COMMAND CPPFLAGS=-I${LIBALF_DIR}/include LDFLAGS=-L${LIBALF_DIR}/lib PREFIX=${LIBALF_DIR} CXXFLAGS=-std=c++14 make -C libAMoRE++ install
+                                       COMMAND CPPFLAGS=-I${LIBALF_DIR}/include LDFLAGS=-L${LIBALF_DIR}/lib PREFIX=${LIBALF_DIR} CXXFLAGS=-std=c++14 make -C libalf install
                                PREFIX ${LIBALF_DIR}
                                BUILD_BYPRODUCTS ${LIBALF_DIR}/lib/libalf.a ${LIBALF_DIR}/lib/libAMoRE.a ${LIBALF_DIR}/lib/libAMoRE++.a)
 ExternalProject_Get_Property(libalf-src INSTALL_DIR)
@@ -60,23 +64,22 @@ foreach (_s ${SRC})
     message(STATUS "${_s}")
 endforeach()
 
-add_library(prtracer-objects OBJECT ${SRC})
+add_library(ptracer-objects OBJECT ${SRC})
 # shared libraries need PIC
-set_property(TARGET prtracer-objects PROPERTY POSITION_INDEPENDENT_CODE 1
-                                              CXX_STANDARD 23)
+set_property(TARGET ptracer-objects PROPERTY POSITION_INDEPENDENT_CODE 1)
 add_dependencies(ptracer-objects libalf-src)
 
-add_executable(ptracer $<TARGET_OBJECTS:prtracer-objects>)
+add_executable(ptracer $<TARGET_OBJECTS:ptracer-objects>)
 add_dependencies(ptracer libalf-src)
 # Build shared library
-##add_library(ptracer-shared SHARED $<TARGET_OBJECTS:prtracer-objects>)
+##add_library(ptracer-shared SHARED $<TARGET_OBJECTS:ptracer-objects>)
 ##set_target_properties(ptracer-shared PROPERTIES VERSION ${PROJECT_VERSION}
 ##                                     PUBLIC_HEADER ../../src/TracingManager.h)
 ##install(TARGETS ptracer-shared
 ##        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
 ##        PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 # Build static library
-add_library(ptracer-static STATIC $<TARGET_OBJECTS:prtracer-objects>)
+add_library(ptracer-static STATIC $<TARGET_OBJECTS:ptracer-objects>)
 set_target_properties(ptracer-static PROPERTIES VERSION ${PROJECT_VERSION}
                                      PUBLIC_HEADER ../../src/TracingManager.h)
 install(TARGETS ptracer-static
@@ -86,13 +89,15 @@ add_dependencies(ptracer-static libalf-src)
 
 set_target_properties(ptracer PROPERTIES LINK_SEARCH_START_STATIC ON
                                          LINK_SEARCH_END_STATIC ON)
+target_link_options(ptracer PRIVATE "-static")
 
 include_directories(${CONAN_INCLUDE_DIRS}
                     ${LIBALF_DIR}/include)
 
-#Boost::program_options Boost::thread libunwind::libunwind
-target_link_libraries(ptracer PRIVATE ${CONAN_LIBS} -static-libgcc -static-libstdc++ libalf)
-target_link_libraries(ptracer-static PRIVATE ${CONAN_LIBS} -static-libgcc -static-libstdc++ libalf)
+# Conan libraries: Boost::program_options Boost::thread libunwind::libunwind
+# Libraries order is important! ld will search for undefined symbols only in libraries specified after
+target_link_libraries(ptracer PUBLIC ${CONAN_LIBS} -static-libgcc -static-libstdc++ libAMoRE++ libAMoRE libalf)
+target_link_libraries(ptracer-static PUBLIC ${CONAN_LIBS} -static-libgcc -static-libstdc++ libAMoRE++ libAMoRE libalf)
 #target_link_libraries(ptracer-shared PRIVATE ${CONAN_LIBS} -static-libgcc -static-libstdc++)
 
 set(EXTRA_FLAGS "-c -Werror -Wall -Wextra -MMD -Wall -Wextra -Wconversion -Wsign-conversion")
