@@ -92,12 +92,6 @@ jobs:
         with:
           path: ~/.conan/data
           key: ${{ runner.os }}-x86_64-conanpackages-${{ hashFiles('./build/x86_64/conanfile.txt') }}
-      - name: Build Custom Conan Boost Recipe
-        working-directory: ./build/x86_64
-        run: |
-          if ! conan search boost/1.80.0@madeg/boost; then
-            conan create ../aarch64/boost-conan-recipe madeg/boost --profile build.profile --build missing
-          fi
       - name: Create x86_64 Build Directory
         run: mkdir ./build/x86_64/cmake-build-release
       - name: Run Conan for x86_64
