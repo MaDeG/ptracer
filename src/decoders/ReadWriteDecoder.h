@@ -1,6 +1,7 @@
 #ifndef PTRACER_READWRITEDECODER_H
 #define PTRACER_READWRITEDECODER_H
 
+#include <filesystem>
 #include <fstream>
 #include <set>
 #include "SyscallDecoder.h"

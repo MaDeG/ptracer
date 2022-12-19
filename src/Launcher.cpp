@@ -61,14 +61,14 @@ Launcher::Launcher(int argc, const char** argv) {
 	} catch (boost::program_options::error& e) {
 		throw runtime_error(string(e.what()));
 	}
-	if (option_values.contains(Launcher::HELP_OPT)) {
+	if (option_values.count(Launcher::HELP_OPT) > 0) {
 		cout << Launcher::PROGRAM_NAME << " - " << Launcher::PROGRAM_DESC << endl;
 		cout << description << endl;
 		return;
 	}
-	if (option_values.contains(Launcher::PID_OPT)) {
+	if (option_values.count(Launcher::PID_OPT) > 0) {
 		this->traced_pid = option_values[Launcher::PID_OPT].as<long>();
-	} else if (option_values.contains(Launcher::RUN_OPT)) {
+	} else if (option_values.count(Launcher::RUN_OPT) > 0) {
 		for (int i = 1; i < argc; i++) {
 			if (!strcmp(argv[i], ("--" + Launcher::RUN_OPT).c_str())) {
 				this->tracee_argv = (char**) &argv[i + 1];
@@ -84,7 +84,7 @@ Launcher::Launcher(int argc, const char** argv) {
 	this->tracee_jail = option_values[Launcher::JAIL_OPT].as<bool>();
 	this->backtrace = option_values[Launcher::BACKTRACE_OPT].as<bool>();
 	if (option_values[Launcher::AUTHORIZER_OPT].as<bool>()) {
-		if (!option_values.contains(Launcher::NFA_PATH_OPT) || !option_values.contains(Launcher::ASSOCIATIONS_PATH_OPT)) {
+		if (option_values.count(Launcher::NFA_PATH_OPT) <= 0 || option_values.count(Launcher::ASSOCIATIONS_PATH_OPT) <= 0) {
 			throw runtime_error("The Authorizer module requires to specify a path where the NFA is saved and retrieved (if exists) and a path where to store the IDs <-> syscalls associations");
 		}
 		this->authorizer = make_unique<Authorizer>(option_values[Launcher::NFA_PATH_OPT].as<string>(),

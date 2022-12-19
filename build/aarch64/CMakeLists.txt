@@ -48,7 +48,7 @@ set(LIBALF_DIR ${CMAKE_BINARY_DIR}/libalf)
 string(REGEX REPLACE "-$" "${ANDROID_NATIVE_API_LEVEL}-${CMAKE_ANDROID_NDK_TOOLCHAIN_VERSION}" LIBALF_CC_COMPILER ${CMAKE_CXX_ANDROID_TOOLCHAIN_PREFIX})
 set(LIBALF_CXX_COMPILER "${LIBALF_CC_COMPILER}++")
 ExternalProject_Add(libalf-src GIT_REPOSITORY git@github.com:MaDeG/libalf.git
-                               GIT_TAG integration
+                               GIT_TAG master
                                BUILD_IN_SOURCE TRUE
                                CONFIGURE_COMMAND ""
                                BUILD_COMMAND ""
@@ -76,20 +76,19 @@ endforeach()
 add_library(ptracer-objects OBJECT ${SRC})
 # shared libraries need PIC
 set_target_properties(ptracer-objects PROPERTIES POSITION_INDEPENDENT_CODE 1
-                                                  CXX_STANDARD 23
-)
+                                                 CXX_STANDARD 23)
 add_dependencies(ptracer-objects libalf-src)
 
 add_executable(ptracer $<TARGET_OBJECTS:ptracer-objects>)
 add_dependencies(ptracer libalf-src)
 # Build shared library
-add_library(ptracer-shared SHARED $<TARGET_OBJECTS:ptracer-objects>)
-set_target_properties(ptracer-shared PROPERTIES VERSION ${PROJECT_VERSION}
-                                                PUBLIC_HEADER ../../src/TracingManager.h)
-install(TARGETS ptracer-shared
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-add_dependencies(ptracer-shared libalf-src)
+#add_library(ptracer-shared SHARED $<TARGET_OBJECTS:ptracer-objects>)
+#set_target_properties(ptracer-shared PROPERTIES VERSION ${PROJECT_VERSION}
+#                                                PUBLIC_HEADER ../../src/TracingManager.h)
+#install(TARGETS ptracer-shared
+#        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+#        PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+#add_dependencies(ptracer-shared libalf-src)
 # Build static library
 add_library(ptracer-static STATIC $<TARGET_OBJECTS:ptracer-objects>)
 set_target_properties(ptracer-static PROPERTIES VERSION ${PROJECT_VERSION}
@@ -100,7 +99,7 @@ install(TARGETS ptracer-static
 add_dependencies(ptracer-static libalf-src)
 
 target_link_libraries(ptracer PRIVATE ${CONAN_LIBS} unwindstack lzma libalf libAMoRE libAMoRE++)
-target_link_libraries(ptracer-shared PRIVATE ${CONAN_LIBS} unwindstack lzma libalf libAMoRE libAMoRE++)
+#target_link_libraries(ptracer-shared PRIVATE ${CONAN_LIBS} unwindstack lzma libalf libAMoRE libAMoRE++)
 target_link_libraries(ptracer-static PRIVATE ${CONAN_LIBS} unwindstack lzma libalf libAMoRE libAMoRE++)
 
 include_directories(${CONAN_INCLUDE_DIRS}
@@ -111,7 +110,7 @@ set(EXTRA_FLAGS "-c -Werror -Wall -Wextra -MMD -Wall -Wextra -Wconversion -Wsign
 set(EXTRA_FLAGS "-fexceptions -frtti -fstack-protector-all -Wstack-protector -ftrapv -Wno-unused-but-set-variable -Wformat -Wformat-security -D_FORTIFY_SOURCE=2 -U_FORTIFY_SOURCE -fvisibility=hidden -fvisibility-inlines-hidden")
 target_compile_options(ptracer PRIVATE ${CMAKE_C_FLAGS} ${EXTRA_FLAGS})
 target_compile_options(ptracer-static PRIVATE ${CMAKE_C_FLAGS} ${EXTRA_FLAGS})
-target_compile_options(ptracer-shared PRIVATE ${CMAKE_C_FLAGS} ${EXTRA_FLAGS})
+#target_compile_options(ptracer-shared PRIVATE ${CMAKE_C_FLAGS} ${EXTRA_FLAGS})
 
 # Needed for the usage of the correct data structures to extract process information via ptrace
 add_compile_definitions(ARCH_AARCH64)

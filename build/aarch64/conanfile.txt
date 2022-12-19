@@ -2,7 +2,7 @@
 CMakeToolchain
 cmake
 [requires]
-boost/1.80.0
+boost/1.80.0@madeg/boost
 [options]
 boost:shared=False
 boost:without_atomic=False
