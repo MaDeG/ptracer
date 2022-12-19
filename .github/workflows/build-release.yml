@@ -27,7 +27,7 @@ jobs:
             ${{ secrets.LIBZIPARCHIVE_PRIVATE_SSH_KEY }}
             ${{ secrets.LZMA_PRIVATE_SSH_KEY }}
       - name: Get Conan
-        uses: turtlebrowser/get-conan@v1.0
+        uses: turtlebrowser/get-conan@main
       - name: Cache Conan Packages
         id: conan-aarch64-cache
         uses: actions/cache@v3
@@ -52,12 +52,12 @@ jobs:
         working-directory: ./build/aarch64/cmake-build-release
         run: make
       - name: Upload Executable for AARCH64
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: ptracer-aarch64
           path: ./build/aarch64/cmake-build-release/bin/ptracer
       - name: Upload Static Library for AARCH64
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: libptracer-static-aarch64.a
           path: ./build/aarch64/cmake-build-release/lib/libptracer-static.a
@@ -82,13 +82,19 @@ jobs:
             ${{ secrets.LIBZIPARCHIVE_PRIVATE_SSH_KEY }}
             ${{ secrets.LZMA_PRIVATE_SSH_KEY }}
       - name: Get Conan
-        uses: turtlebrowser/get-conan@v1.0
+        uses: turtlebrowser/get-conan@main
       - name: Cache Conan Packages
         id: conan-aarch64-cache
         uses: actions/cache@v3
         with:
           path: ~/.conan/data
           key: ${{ runner.os }}-x86_64-conanpackages-${{ hashFiles('./build/x86_64/conanfile.txt') }}
+      - name: Build Custom Conan Boost Recipe
+        working-directory: ./build/aarch64
+        run: |
+          if ! conan search boost/1.80.0@madeg/boost; then
+            conan create ./boost-conan-recipe madeg/boost --profile:build default --profile:host armv8.profile --build missing
+          fi
       - name: Create x86_64 Build Directory
         run: mkdir ./build/x86_64/cmake-build-release
       - name: Run Conan for x86_64
@@ -101,12 +107,12 @@ jobs:
         working-directory: ./build/x86_64/cmake-build-release
         run: make
       - name: Upload Executable for x86_64
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: ptracer-x86_64
           path: ./build/x86_64/cmake-build-release/bin/ptracer
       - name: Upload Static Library for x86_64
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: libptracer-static-x86_64.a
           path: ./build/x86_64/cmake-build-release/lib/libptracer-static.a

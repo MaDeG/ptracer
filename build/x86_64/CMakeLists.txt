@@ -96,8 +96,8 @@ include_directories(${CONAN_INCLUDE_DIRS}
 
 # Conan libraries: Boost::program_options Boost::thread libunwind::libunwind
 # Libraries order is important! ld will search for undefined symbols only in libraries specified after
-target_link_libraries(ptracer PUBLIC ${CONAN_LIBS} -static-libgcc -static-libstdc++ libAMoRE++ libAMoRE libalf)
-target_link_libraries(ptracer-static PUBLIC ${CONAN_LIBS} -static-libgcc -static-libstdc++ libAMoRE++ libAMoRE libalf)
+target_link_libraries(ptracer PRIVATE ${CONAN_LIBS} -static-libgcc -static-libstdc++ libAMoRE++ libAMoRE libalf)
+target_link_libraries(ptracer-static PRIVATE ${CONAN_LIBS} -static-libgcc -static-libstdc++ libAMoRE++ libAMoRE libalf)
 #target_link_libraries(ptracer-shared PRIVATE ${CONAN_LIBS} -static-libgcc -static-libstdc++)
 
 set(EXTRA_FLAGS "-c -Werror -Wall -Wextra -MMD -Wall -Wextra -Wconversion -Wsign-conversion")

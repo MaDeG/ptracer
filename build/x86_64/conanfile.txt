@@ -1,6 +1,6 @@
 [requires]
 libunwind/1.6.2
-boost/1.80.0
+boost/1.80.0@madeg/boost
 [generators]
 cmake
 [options]
