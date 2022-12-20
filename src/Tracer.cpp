@@ -295,6 +295,7 @@ int Tracer::handle(int status) {
 	assert(this->tracedPid > 0 && this->tracedPid < Tracer::MAX_PID);
 	// If this is a termination signal make a termination notification
 	if (WIFEXITED(status)) {
+		// TODO: Does this ever happen? It is expected that in this case handleTermination would be called
 		this->running = false;
 		this->attached = false;
 		if (this->entryState != nullptr) {
