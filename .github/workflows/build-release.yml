@@ -137,12 +137,14 @@ jobs:
         with:
           name: libptracer-static-x86_64.a
           path: ./libptracer-static-x86_64.a
+      - name: Print PWD
+        run: pwd && ls -la
       - name: Create release
         id: create-release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ptracer-snapshot-${{ github.sha }}
-          release_name: Release Ptracer-SNAPSHOT-${{ github.sha }}
+          name: Release Ptracer-SNAPSHOT-${{ github.sha }}
           body: |
             Run number: ${{ github.run_number }}
             Git reference: ${{ github.ref }}
@@ -150,8 +152,9 @@ jobs:
           generate_release_notes: true
           draft: false
           prerelease: true
+          fail_on_unmatched_files: true
           files: |
-            ./ptracer-aarch64
-            ./libptracer-static-aarch64.a
-            ./ptracer-x86_64
-            ./libptracer-static-x86_64.a
+            ./ptracer/ptracer-aarch64
+            ./ptracer/libptracer-static-aarch64.a
+            ./ptracer/ptracer-x86_64
+            ./ptracer/libptracer-static-x86_64.a
