@@ -66,7 +66,7 @@ set_target_properties(libalf PROPERTIES IMPORTED_LOCATION ${LIBALF_DIR}/lib/liba
 set_target_properties(libAMoRE PROPERTIES IMPORTED_LOCATION ${LIBALF_DIR}/lib/libAMoRE.a)
 set_target_properties(libAMoRE++ PROPERTIES IMPORTED_LOCATION ${LIBALF_DIR}/lib/libAMoRE++.a)
 
-file(GLOB SRC CONFIGURE_DEPENDS "../../src/*.cpp" "../../src/aarch64/*.cpp" "../../src/decoders/*.cpp" "../../src/dto/*.cpp" "../../src/backtracers/android/*.cpp")
+file(GLOB SRC CONFIGURE_DEPENDS "../../src/*.cpp" "../../src/x86_64/*.cpp" "../../src/decoders/*.cpp" "../../src/dto/*.cpp" "../../src/backtracers/android/*.cpp")
 message(STATUS "Source files:")
 foreach (_s ${SRC})
     get_filename_component(_s "${_s}" ABSOLUTE)
@@ -113,4 +113,4 @@ target_compile_options(ptracer-static PRIVATE ${CMAKE_C_FLAGS} ${EXTRA_FLAGS})
 #target_compile_options(ptracer-shared PRIVATE ${CMAKE_C_FLAGS} ${EXTRA_FLAGS})
 
 # Needed for the usage of the correct data structures to extract process information via ptrace
-add_compile_definitions(ARCH_AARCH64)
+add_compile_definitions(ARCH_X8664)

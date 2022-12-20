@@ -38,6 +38,10 @@ bool ReadWriteDecoder::decode(const ProcessSyscallEntry& syscall) {
 	}
 	assert(out->is_open());
 	// TODO: Validate those parameters, what if they are corrupted?
+	if (syscall.argument(2) <= 0) {
+		cerr << "Found potentially corrupted syscall parameters, read/write parameters will not be checked" << endl;
+		return false;
+	}
 	char* extracted = syscall.getTracer()->extractBytes(syscall.argument(1), syscall.argument(2));
 	out->write(extracted, syscall.argument(2));
 	out->flush();

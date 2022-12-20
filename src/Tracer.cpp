@@ -295,6 +295,7 @@ int Tracer::handle(int status) {
 	assert(this->tracedPid > 0 && this->tracedPid < Tracer::MAX_PID);
 	// If this is a termination signal make a termination notification
 	if (WIFEXITED(status)) {
+		// TODO: Does this ever happen? It is expected that in this case handleTermination would be called
 		this->running = false;
 		this->attached = false;
 		if (this->entryState != nullptr) {
@@ -697,7 +698,7 @@ int Tracer::handleSpecialCases(int status, shared_ptr<Registers> regs) {
 		 - If the tracee calls clone with the exit signal set to SIGCHLD -> PTRACE_EVENT_FORK will be delivered. */
 	if (status >> 8 == (SIGTRAP | (PTRACE_EVENT_CLONE << 8))) {
 		assert(regs->syscall() == SYS_clone);
-	#ifdef ARCH_X86_64
+	#ifdef ARCH_X8664
 		assert(regs->returnValue() == -ENOSYS);
 	#endif
 		return_value = this->syscallJump(regs);
@@ -726,7 +727,7 @@ int Tracer::handleSpecialCases(int status, shared_ptr<Registers> regs) {
 		}
 	}
 	if ((status >> 8 == (SIGTRAP | (PTRACE_EVENT_FORK << 8))) || (status >> 8 == (SIGTRAP | (PTRACE_EVENT_VFORK << 8)))) {
-	#ifdef ARCH_X86_64
+	#ifdef ARCH_X8664
 		assert(regs->syscall() == SYS_fork || regs->syscall() == SYS_vfork || regs->syscall() == SYS_clone);
 		assert(regs->returnValue() == -ENOSYS);
 	#elif defined(ARCH_AARCH64)
@@ -792,7 +793,7 @@ int Tracer::syscallEntry(int status, shared_ptr<Registers> regs) {
 		return Tracer::PTRACE_ERROR;
 	}
 	//cout << "Sysentry PID: " << this->_traced_pid << " SPID: " << this->_traced_spid << " System call: " << regs->nsyscall() << endl;
-#ifdef ARCH_X86_64
+#ifdef ARCH_X8664
 	assert(regs->returnValue() == -ENOSYS);                                           // The kernel sets rax to -ENOSYS in a syscall entry
 #endif
 	this->entryState->tracer = TracingManager::tracers[this->tracedSpid];

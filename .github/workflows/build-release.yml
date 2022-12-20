@@ -35,8 +35,8 @@ jobs:
       - name: Build Custom Conan Boost Recipe
         working-directory: ./build/aarch64
         run: |
-          if ! conan search boost/1.80.0@madeg/boost; then
-            conan create ./boost-conan-recipe madeg/boost --profile:build default --profile:host armv8.profile --build missing
+          if ! conan search -q "arch=armv8 AND os=Android" boost/1.80.0@madeg/boost; then
+            conan create ../boost-conan-recipe madeg/boost --profile:build default --profile:host ./armv8.profile --build missing
           fi
       - name: Create AARCH64 Build Directory
         run: mkdir ./build/aarch64/cmake-build-release
@@ -116,9 +116,66 @@ jobs:
           path: ./build/x86_64/cmake-build-release/lib/libptracer-static.a
           if-no-files-found: error
 
+  build-x86_64-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: |
+            ${{ secrets.LIBARTBASE_PRIVATE_SSH_KEY }}
+            ${{ secrets.LIBARTPALETTE_PRIVATE_SSH_KEY }}
+            ${{ secrets.LIBBASE_PRIVATE_SSH_KEY }}
+            ${{ secrets.LIBCUTILS_PRIVATE_SSH_KEY }}
+            ${{ secrets.LIBDEXFILE_PRIVATE_SSH_KEY }}
+            ${{ secrets.LIBLOG_PRIVATE_SSH_KEY }}
+            ${{ secrets.LIBSYSTEM_PRIVATE_SSH_KEY }}
+            ${{ secrets.LIBTINYXML2_PRIVATE_SSH_KEY }}
+            ${{ secrets.LIBUNWINDSTACK_PRIVATE_SSH_KEY }}
+            ${{ secrets.LIBUTILS_PRIVATE_SSH_KEY }}
+            ${{ secrets.LIBZIPARCHIVE_PRIVATE_SSH_KEY }}
+            ${{ secrets.LZMA_PRIVATE_SSH_KEY }}
+      - name: Get Conan
+        uses: turtlebrowser/get-conan@main
+      - name: Cache Conan Packages
+        id: conan-x86_64-android-cache
+        uses: actions/cache@v3
+        with:
+          path: ~/.conan/data
+          key: ${{ runner.os }}-x86_64-android-conanpackages-${{ hashFiles('./build/x86_64-android/conanfile.txt') }}
+      - name: Build Custom Conan Boost Recipe
+        working-directory: ./build/x86_64-android
+        run: |
+          if ! conan search -q "arch=x86_64 AND os=Android" boost/1.80.0@madeg/boost; then
+            conan create ../boost-conan-recipe madeg/boost --profile:build default --profile:host ./x86_64.profile --build missing
+          fi
+      - name: Create x86_64-android Build Directory
+        run: mkdir ./build/x86_64-android/cmake-build-release
+      - name: Run Conan for x86_64-android
+        working-directory: ./build/x86_64-android/cmake-build-release
+        run: conan install ../conanfile.txt --profile:build default --profile:host ../x86_64.profile --build missing
+      - name: Run CMake for x86_64-android
+        working-directory: ./build/x86_64-android/cmake-build-release
+        run: cmake .. -DCMAKE_TOOLCHAIN_FILE=conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release
+      - name: Make for x86_64-android
+        working-directory: ./build/x86_64-android/cmake-build-release
+        run: make
+      - name: Upload Executable for x86_64-android
+        uses: actions/upload-artifact@v3
+        with:
+          name: ptracer-x86_64-android
+          path: ./build/x86_64-android/cmake-build-release/bin/ptracer
+          if-no-files-found: error
+      - name: Upload Static Library for x86_64-android
+        uses: actions/upload-artifact@v3
+        with:
+          name: libptracer-static-x86_64-android.a
+          path: ./build/x86_64-android/cmake-build-release/lib/libptracer-static.a
+          if-no-files-found: error
+
   release:
     runs-on: ubuntu-latest
-    needs: [ build-aarch64, build-x86_64 ]
+    needs: [ build-aarch64, build-x86_64, build-x86_64-android ]
     if: ${{ github.ref == 'refs/heads/master' || github.ref == 'refs/tags/' }}
     steps:
       - name: Download All Build Artifacts
@@ -131,13 +188,15 @@ jobs:
           mv libptracer-static-aarch64.a/{libptracer-static.a,libptracer-static-aarch64.a}
           mv ptracer-x86_64/{ptracer,ptracer-x86_64}
           mv libptracer-static-x86_64.a/{libptracer-static.a,libptracer-static-x86_64.a}
+          mv ptracer-x86_64-android/{ptracer,ptracer-x86_64-android}
+          mv libptracer-static-x86_64-android.a/{libptracer-static.a,libptracer-static-x86_64-android.a}
       - name: Create Snapshot Release
         id: create-snapshot-release
         uses: softprops/action-gh-release@v1
         if: ${{ startsWith(github.ref, 'refs/heads/') }}
         with:
-          tag_name: ptracer-snapshot-${{ github.sha }}
-          name: Release Ptracer-SNAPSHOT-${{ github.sha }}
+          tag_name: ptracer-snapshot-${{ github.run_number }}
+          name: Release Ptracer-SNAPSHOT-${{ github.run_number }}
           body: |
             Run number: ${{ github.run_number }}
             Git reference: ${{ github.ref }}
@@ -151,6 +210,8 @@ jobs:
             ./libptracer-static-aarch64.a/*
             ./ptracer-x86_64/*
             ./libptracer-static-x86_64.a/*
+            ./ptracer-x86_64-android/*
+            ./libptracer-static-x86_64-android.a/*
       - name: Create Release
         id: create-release
         uses: softprops/action-gh-release@v1
@@ -171,3 +232,5 @@ jobs:
             ./libptracer-static-aarch64.a/*
             ./ptracer-x86_64/*
             ./libptracer-static-x86_64.a/*
+            ./ptracer-x86_64-android/*
+            ./libptracer-static-x86_64-android.a/*
