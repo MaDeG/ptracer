@@ -1,6 +1,5 @@
 #include <vector>
 #include <iostream>
-#include <string.h>
 #include <sys/syscall.h>
 #include <boost/format.hpp>
 #include "Tracer.h"
@@ -12,7 +11,7 @@ using namespace std;
 
 // Set of System call numbers that may generate a child
 const set<int> ProcessSyscallEntry::childGeneratingSyscalls = {SYS_clone,
-#ifdef ARCH_X86_64
+#ifdef ARCH_X8664
 																															 SYS_fork,
 																															 SYS_vfork
 #endif

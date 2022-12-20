@@ -1,6 +1,5 @@
 #include <assert.h>
 #include <iostream>
-#include <string.h>
 #include "BacktracerImpl.h"
 
 using namespace std;

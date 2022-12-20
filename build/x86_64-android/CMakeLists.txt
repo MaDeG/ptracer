@@ -113,4 +113,4 @@ target_compile_options(ptracer-static PRIVATE ${CMAKE_C_FLAGS} ${EXTRA_FLAGS})
 #target_compile_options(ptracer-shared PRIVATE ${CMAKE_C_FLAGS} ${EXTRA_FLAGS})
 
 # Needed for the usage of the correct data structures to extract process information via ptrace
-add_compile_definitions(ARCH_X86_64)
+add_compile_definitions(ARCH_X8664)

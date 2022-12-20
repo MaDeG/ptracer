@@ -1,8 +1,8 @@
 #ifndef PTRACER_BACKTRACERIMPL_H
 #define PTRACER_BACKTRACERIMPL_H
 #include <libunwind-ptrace.h>
-#include "../Backtracer.h"
-#include "../StackFrame.h"
+#include "../../Backtracer.h"
+#include "../../StackFrame.h"
 
 class BacktracerImpl : public Backtracer {
 public:
