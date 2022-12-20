@@ -33,10 +33,10 @@ jobs:
           path: ~/.conan/data
           key: ${{ runner.os }}-aarch64-conanpackages-${{ hashFiles('./build/aarch64/conanfile.txt') }}
       - name: Build Custom Conan Boost Recipe
-        working-directory: ./build/
+        working-directory: ./build/aarch64
         run: |
           if ! conan search -q "arch=armv8 AND os=Android" boost/1.80.0@madeg/boost; then
-            conan create ./boost-conan-recipe madeg/boost --profile:build default --profile:host armv8.profile --build missing
+            conan create ../boost-conan-recipe madeg/boost --profile:build default --profile:host ./armv8.profile --build missing
           fi
       - name: Create AARCH64 Build Directory
         run: mkdir ./build/aarch64/cmake-build-release
