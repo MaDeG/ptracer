@@ -126,7 +126,7 @@ jobs:
       - name: Create Snapshot Release
         id: create-snapshot-release
         uses: softprops/action-gh-release@v1
-        if: $ {{ ! startsWith(github.ref, 'refs/tags/') }}
+        if: ! startsWith(github.ref, 'refs/tags/')
         with:
           tag_name: ptracer-snapshot-${{ github.sha }}
           name: Release Ptracer-SNAPSHOT-${{ github.sha }}
@@ -146,7 +146,7 @@ jobs:
       - name: Create Release
         id: create-release
         uses: softprops/action-gh-release@v1
-        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        if: startsWith(github.ref, 'refs/tags/')
         with:
           tag_name: ptracer-${{ github.ref_name }}
           name: Ptracer ${{ github.ref_name }} Release
