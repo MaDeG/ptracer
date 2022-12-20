@@ -117,31 +117,16 @@ jobs:
     needs: [ build-aarch64, build-x86_64 ]
     #if: github.ref == 'refs/heads/master'
     steps:
-      - name: Download Executable for AARCH64
+      - name: Download All Build Artifacts
         uses: actions/download-artifact@v3
         with:
-          name: ptracer-aarch64
-          path: ./ptracer-aarch64
-      - name: Download Static Library for AARCH64
-        uses: actions/download-artifact@v3
-        with:
-          name: libptracer-static-aarch64.a
-          path: ./libptracer-static-aarch64.a
-      - name: Download Executable for x86_64
-        uses: actions/download-artifact@v3
-        with:
-          name: ptracer-x86_64
-          path: ./ptracer-x86_64
-      - name: Download Static Library for x86_64
-        uses: actions/download-artifact@v3
-        with:
-          name: libptracer-static-x86_64.a
-          path: ./libptracer-static-x86_64.a
+          path: .
       - name: Print PWD
         run: pwd && ls -la
-      - name: Create release
-        id: create-release
+      - name: Create Snapshot Release
+        id: create-snapshot-release
         uses: softprops/action-gh-release@v1
+        if: $ {{ ! startsWith(github.ref, 'refs/tags/') }}
         with:
           tag_name: ptracer-snapshot-${{ github.sha }}
           name: Release Ptracer-SNAPSHOT-${{ github.sha }}
@@ -154,7 +139,27 @@ jobs:
           prerelease: true
           fail_on_unmatched_files: true
           files: |
-            ptracer-aarch64
-            libptracer-static-aarch64.a
-            ptracer-x86_64
-            libptracer-static-x86_64.a
+            ./ptracer-aarch64/*
+            ./libptracer-static-aarch64.a/*
+            ./ptracer-x86_64/*
+            ./libptracer-static-x86_64.a/*
+      - name: Create Release
+        id: create-release
+        uses: softprops/action-gh-release@v1
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        with:
+          tag_name: ptracer-${{ github.ref_name }}
+          name: Ptracer ${{ github.ref_name }} Release
+          body: |
+            Run number: ${{ github.run_number }}
+            Git reference: ${{ github.ref }}
+            Commit Hash: ${{ github.sha }}
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+          fail_on_unmatched_files: true
+          files: |
+            ./ptracer-aarch64/*
+            ./libptracer-static-aarch64.a/*
+            ./ptracer-x86_64/*
+            ./libptracer-static-x86_64.a/*
