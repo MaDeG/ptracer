@@ -8,6 +8,8 @@ An Authorizer module has been included, in learning mode it is able to generate 
 a System Call number together with its stack trace.
 In enforce mode it will ensure that all the obeserved transitions have been observed before.
 
+This project targets ARMv8 and x86_64 platforms.
+
 ## Usage
 
 It is mandatory to specify either a command whose execution will be traced or a process to attach to.
@@ -123,17 +125,25 @@ ptracer
 │  │  ├─ libbase-ndk
 ```
 
-## Compile for AARCH64 (ARMv8)
+## Build
 
 The following tools are expected to be pre-installed to be able to compile the project:
 
 - [Conan](https://conan.io/) version 1.50 or above: Used to handle dependencies like Boost and Android NDK. 
 - [CMake](https://cmake.org/) version 3.23 or above: Use to control the software compilation and link together all the other dependencies.
 
-In order to properly invoke Conan and CMake it is possible to use the build script at `./build/aarch64/build.sh`.
+Depending on what architecture you are targeting it is possible to use the following build scripts in order to properly invoke Conan and
+CMake:
 
-Once it has terminated the `ptracer` executable will be in `./build/aarch64/cmake-build-debug/bin` and the statically and dynamically linked
-libraries will be in `./build/aarch64/cmake-build-debug/lib`.
+- `./build/aarch64/build.sh`: Used to build an executable and statically linked library for ARMv8 architectures
+- `./build/x86_64/build.sh`: Used to build an executable and statically linked library for x86_64 architectures but not Android
+- `./build/x86_64-android/build.sh`: Used to build an executable and statically linked library for x86_64 architectures running Android
+
+Once it has terminated the `ptracer` executable will be in `./build/$ARCH/cmake-build-debug/bin` and the statically and dynamically linked
+libraries will be in `./build/$ARCH/cmake-build-debug/lib`.
+
+It has been necessary to subdivide the build for x86_64 architectures running Android and not because the last ones will benefit from the
+stack unwinding capabilities of `libunwindstack` and to do that it requires to be compiled using Android NDK. 
 
 ## Debug
 The project uses the user-defined signal SIGUSR1, and by default GDB will stop at every signal, to modify this behaviour it
@@ -141,7 +151,7 @@ is possible to use the following:
 ```
 handle SIGUSR1 nostop noprint pass
 ```
-This can be done automatically by putting this command into your ~/.gdbinit file.
+This can be done automatically by putting this command into your `~/.gdbinit` file.
 
 Debugging native Android applications can be done using GDB server which can be found in adb push `$ANDROID_SDK/ndk-bundle/prebuilt/android-arm64/gdbserver/gdbserver`
 and copied on the device with the following command:
@@ -154,3 +164,13 @@ GDB Server can be used as follows:
 ```
 ./gdbserver --once 0.0.0.0:7777 ./ptracer --run ls -la
 ```
+
+In case the Android system is not directly reachable (e.g., it is an emulated instance in Android Studio), then it is possible to forward
+a socket connection using the `adb` utility tool.
+For example in order to forward the local TCP port 5000 to the Android TCP port 5001, it is possible to use the following command:
+
+```
+adb forward tcp:5000 tcp:50001
+```
+
+For more informatio regarding `adb` and forwarding check its manual [here](https://developer.android.com/studio/command-line/adb#forwardports).

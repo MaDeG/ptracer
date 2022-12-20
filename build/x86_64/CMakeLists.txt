@@ -37,7 +37,7 @@ conan_basic_setup()
 include(ExternalProject)
 set(LIBALF_DIR ${CMAKE_BINARY_DIR}/libalf)
 ExternalProject_Add(libalf-src GIT_REPOSITORY git@github.com:MaDeG/libalf.git
-                               GIT_TAG integration
+                               GIT_TAG master
                                BUILD_IN_SOURCE TRUE
                                CONFIGURE_COMMAND ""
                                BUILD_COMMAND ""
@@ -57,7 +57,7 @@ set_target_properties(libAMoRE++ PROPERTIES IMPORTED_LOCATION ${LIBALF_DIR}/lib/
 
 find_package(Threads REQUIRED)
 
-file(GLOB SRC CONFIGURE_DEPENDS "../../src/*.cpp" "../../src/x86_64/*.cpp" "../../src/decoders/*.cpp" "../../src/dto/*.cpp")
+file(GLOB SRC CONFIGURE_DEPENDS "../../src/*.cpp" "../../src/x86_64/*.cpp" "../../src/decoders/*.cpp" "../../src/dto/*.cpp" "../../src/backtracers/linux/*.cpp")
 message(STATUS "Source files:")
 foreach (_s ${SRC})
     get_filename_component(_s "${_s}" ABSOLUTE)

@@ -33,7 +33,7 @@ jobs:
           path: ~/.conan/data
           key: ${{ runner.os }}-aarch64-conanpackages-${{ hashFiles('./build/aarch64/conanfile.txt') }}
       - name: Build Custom Conan Boost Recipe
-        working-directory: ./build/aarch64
+        working-directory: ./build/
         run: |
           if ! conan search boost/1.80.0@madeg/boost; then
             conan create ./boost-conan-recipe madeg/boost --profile:build default --profile:host armv8.profile --build missing
@@ -136,8 +136,8 @@ jobs:
         uses: softprops/action-gh-release@v1
         if: ${{ startsWith(github.ref, 'refs/heads/') }}
         with:
-          tag_name: ptracer-snapshot-${{ github.sha }}
-          name: Release Ptracer-SNAPSHOT-${{ github.sha }}
+          tag_name: ptracer-snapshot-${{ github.run_number }}
+          name: Release Ptracer-SNAPSHOT-${{ github.run_number }}
           body: |
             Run number: ${{ github.run_number }}
             Git reference: ${{ github.ref }}

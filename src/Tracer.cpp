@@ -792,9 +792,6 @@ int Tracer::syscallEntry(int status, shared_ptr<Registers> regs) {
 		return Tracer::PTRACE_ERROR;
 	}
 	//cout << "Sysentry PID: " << this->_traced_pid << " SPID: " << this->_traced_spid << " System call: " << regs->nsyscall() << endl;
-#ifdef ARCH_X86_64
-	assert(regs->returnValue() == -ENOSYS);                                           // The kernel sets rax to -ENOSYS in a syscall entry
-#endif
 	this->entryState->tracer = TracingManager::tracers[this->tracedSpid];
 	this->entryState->setRegisters(regs);
 	if (this->getBacktrace()) {
