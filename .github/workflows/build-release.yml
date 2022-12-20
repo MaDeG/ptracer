@@ -3,8 +3,6 @@ name: Build Release
 on:
   push:
     branches: [ "*" ]
-  pull_request:
-    branches: [ "*" ]
 
 jobs:
   build-aarch64:
@@ -56,11 +54,13 @@ jobs:
         with:
           name: ptracer-aarch64
           path: ./build/aarch64/cmake-build-release/bin/ptracer
+          if-no-files-found: error
       - name: Upload Static Library for AARCH64
         uses: actions/upload-artifact@v3
         with:
           name: libptracer-static-aarch64.a
           path: ./build/aarch64/cmake-build-release/lib/libptracer-static.a
+          if-no-files-found: error
 
   build-x86_64:
     runs-on: ubuntu-latest
@@ -108,88 +108,66 @@ jobs:
         with:
           name: ptracer-x86_64
           path: ./build/x86_64/cmake-build-release/bin/ptracer
+          if-no-files-found: error
       - name: Upload Static Library for x86_64
         uses: actions/upload-artifact@v3
         with:
           name: libptracer-static-x86_64.a
           path: ./build/x86_64/cmake-build-release/lib/libptracer-static.a
+          if-no-files-found: error
 
   release:
     runs-on: ubuntu-latest
     needs: [ build-aarch64, build-x86_64 ]
-    if: github.ref == 'refs/heads/master'
+    #if: ${{ github.ref == 'refs/heads/master' || github.ref == 'refs/tags/' }}
     steps:
-      - name: Download Executable for AARCH64
+      - name: Download All Build Artifacts
         uses: actions/download-artifact@v3
         with:
-          name: ptracer-aarch64
-          path: ./ptracer-aarch64
-      - name: Download Static Library for AARCH64
-        uses: actions/download-artifact@v3
-        with:
-          name: libptracer-static-aarch64.a
-          path: ./libptracer-static-aarch64.a
-      - name: Download Executable for x86_64
-        uses: actions/download-artifact@v3
-        with:
-          name: ptracer-x86_64
-          path: ./ptracer-x86_64
-      - name: Download Static Library for x86_64
-        uses: actions/download-artifact@v3
-        with:
-          name: libptracer-static-x86_64.a
-          path: ./libptracer-static-x86_64.a
-      - name: Create release
-        id: create-release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          path: .
+      - name: Prepare Build Artifacts
+        run: |
+          mv ptracer-aarch64/{ptracer,ptracer-aarch64}
+          mv libptracer-static-aarch64.a/{libptracer-static.a,libptracer-static-aarch64.a}
+          mv ptracer-x86_64/{ptracer,ptracer-x86_64}
+          mv libptracer-static-x86_64.a/{libptracer-static.a,libptracer-static-x86_64.a}
+      - name: Create Snapshot Release
+        id: create-snapshot-release
+        uses: softprops/action-gh-release@v1
+        if: ${{ startsWith(github.ref, 'refs/heads/') }}
         with:
           tag_name: ptracer-snapshot-${{ github.sha }}
-          release_name: Release Ptracer-SNAPSHOT-${{ github.sha }}
+          name: Release Ptracer-SNAPSHOT-${{ github.sha }}
           body: |
             Run number: ${{ github.run_number }}
             Git reference: ${{ github.ref }}
             Commit Hash: ${{ github.sha }}
+          generate_release_notes: true
           draft: false
           prerelease: true
-      - name: Upload Release for AARCH64 - Executable
-        id: upload-release-aarch64-exe
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          fail_on_unmatched_files: true
+          files: |
+            ./ptracer-aarch64/*
+            ./libptracer-static-aarch64.a/*
+            ./ptracer-x86_64/*
+            ./libptracer-static-x86_64.a/*
+      - name: Create Release
+        id: create-release
+        uses: softprops/action-gh-release@v1
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
         with:
-          upload_url: ${{ steps.create-release-aarch64-exe.outputs.upload_url }}
-          asset_path: ./ptracer-aarch64
-          asset_name: ptracer-aarch64
-          asset_content_type: application/x-elf
-      - name: Upload Release for AARCH64 - Static Library
-        id: upload-release-aarch64-static
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create-release-aarch64-static.outputs.upload_url }}
-          asset_path: ./libptracer-static-aarch64.a
-          asset_name: libptracer-static-aarch64.a
-          asset_content_type: application/x-elf
-      - name: Upload Release for x86_64 - Executable
-        id: upload-release-x86_64-exe
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create-release-x86_64.outputs.upload_url }}
-          asset_path: ./ptracer-x86_64
-          asset_name: ptracer-x86_64
-          asset_content_type: application/x-elf
-      - name: Upload Release for x86_64 - Static Library
-        id: upload-release-x86_64-static
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create-release-x86_64-static.outputs.upload_url }}
-          asset_path: ./libptracer-static-x86_64.a
-          asset_name: libptracer-static-x86_64.a
-          asset_content_type: application/x-elf
+          tag_name: ptracer-${{ github.ref_name }}
+          name: Ptracer ${{ github.ref_name }} Release
+          body: |
+            Run number: ${{ github.run_number }}
+            Git reference: ${{ github.ref }}
+            Commit Hash: ${{ github.sha }}
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+          fail_on_unmatched_files: true
+          files: |
+            ./ptracer-aarch64/*
+            ./libptracer-static-aarch64.a/*
+            ./ptracer-x86_64/*
+            ./libptracer-static-x86_64.a/*
