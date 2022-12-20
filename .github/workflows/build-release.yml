@@ -3,8 +3,6 @@ name: Build Release
 on:
   push:
     branches: [ "*" ]
-  pull_request:
-    branches: [ "*" ]
 
 jobs:
   build-aarch64:
@@ -141,9 +139,7 @@ jobs:
           path: ./libptracer-static-x86_64.a
       - name: Create release
         id: create-release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v1
         with:
           tag_name: ptracer-snapshot-${{ github.sha }}
           release_name: Release Ptracer-SNAPSHOT-${{ github.sha }}
@@ -151,45 +147,11 @@ jobs:
             Run number: ${{ github.run_number }}
             Git reference: ${{ github.ref }}
             Commit Hash: ${{ github.sha }}
+          generate_release_notes: true
           draft: false
           prerelease: true
-      - name: Upload Release for AARCH64 - Executable
-        id: upload-release-aarch64-exe
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create-release-aarch64-exe.outputs.upload_url }}
-          asset_path: ./ptracer-aarch64
-          asset_name: ptracer-aarch64
-          asset_content_type: application/x-elf
-      - name: Upload Release for AARCH64 - Static Library
-        id: upload-release-aarch64-static
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create-release-aarch64-static.outputs.upload_url }}
-          asset_path: ./libptracer-static-aarch64.a
-          asset_name: libptracer-static-aarch64.a
-          asset_content_type: application/x-elf
-      - name: Upload Release for x86_64 - Executable
-        id: upload-release-x86_64-exe
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create-release-x86_64.outputs.upload_url }}
-          asset_path: ./ptracer-x86_64
-          asset_name: ptracer-x86_64
-          asset_content_type: application/x-elf
-      - name: Upload Release for x86_64 - Static Library
-        id: upload-release-x86_64-static
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create-release-x86_64-static.outputs.upload_url }}
-          asset_path: ./libptracer-static-x86_64.a
-          asset_name: libptracer-static-x86_64.a
-          asset_content_type: application/x-elf
+          files: |
+            ./ptracer-aarch64
+            ./libptracer-static-aarch64.a
+            ./ptracer-x86_64
+            ./libptracer-static-x86_64.a
