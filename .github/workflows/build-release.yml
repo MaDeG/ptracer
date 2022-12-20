@@ -54,11 +54,13 @@ jobs:
         with:
           name: ptracer-aarch64
           path: ./build/aarch64/cmake-build-release/bin/ptracer
+          if-no-files-found: error
       - name: Upload Static Library for AARCH64
         uses: actions/upload-artifact@v3
         with:
           name: libptracer-static-aarch64.a
           path: ./build/aarch64/cmake-build-release/lib/libptracer-static.a
+          if-no-files-found: error
 
   build-x86_64:
     runs-on: ubuntu-latest
@@ -106,11 +108,13 @@ jobs:
         with:
           name: ptracer-x86_64
           path: ./build/x86_64/cmake-build-release/bin/ptracer
+          if-no-files-found: error
       - name: Upload Static Library for x86_64
         uses: actions/upload-artifact@v3
         with:
           name: libptracer-static-x86_64.a
           path: ./build/x86_64/cmake-build-release/lib/libptracer-static.a
+          if-no-files-found: error
 
   release:
     runs-on: ubuntu-latest
@@ -121,8 +125,12 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           path: .
-      - name: Print PWD
-        run: pwd && ls -la
+      - name: Prepare Build Artifacts
+        run: |
+          mv ptracer-aarch64/{ptracer,ptracer-aarch64}
+          mv libptracer-static-aarch64.a/{libptracer-static.a,libptracer-static-aarch64.a}
+          mv ptracer-x86_64/{ptracer,ptracer-x86_64}
+          mv libptracer-static-x86_64.a/{libptracer-static.a,libptracer-static-x86_64.a}
       - name: Create Snapshot Release
         id: create-snapshot-release
         uses: softprops/action-gh-release@v1
