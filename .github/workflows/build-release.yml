@@ -154,7 +154,7 @@ jobs:
           prerelease: true
           fail_on_unmatched_files: true
           files: |
-            ./ptracer/ptracer-aarch64
-            ./ptracer/libptracer-static-aarch64.a
-            ./ptracer/ptracer-x86_64
-            ./ptracer/libptracer-static-x86_64.a
+            ptracer-aarch64
+            libptracer-static-aarch64.a
+            ptracer-x86_64
+            libptracer-static-x86_64.a
