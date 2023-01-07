@@ -39,7 +39,6 @@ void ProcessSyscallEntry::print() const {
 	cout << "------------------ SYSCALL ENTRY START ------------------" << endl;
   ProcessNotification::print();
   cout << "Syscall = " << SyscallNameResolver::resolve(this->getSyscall()) << " (" << this->getSyscall() << ")" << endl;
-  cout << "Return value = " << this->returnValue << endl;
   if (!this->stackFrames.empty()) {
     cout << "Stack unwinding =" << endl;
     for (const StackFrame& i : this->stackFrames) {

@@ -641,7 +641,6 @@ int Tracer::handleSpecialCases(int status, shared_ptr<Registers> regs) {
 	assert(this->attached);
 	assert(this->tracedPid > 0 && this->tracedPid < Tracer::MAX_PID);
 	assert(this->tracedSpid > 0 && this->tracedSpid < Tracer::MAX_PID);
-	int returnValue;
 #ifdef ARCH_AARCH64
 	// If the previous syscall is not generating an exit notification then this is an entry notification of a new syscall
 	if (this->entryState && ProcessSyscallEntry::nonReturningSyscalls.find(this->entryState->getSyscall()) != ProcessSyscallEntry::nonReturningSyscalls.end()) {
@@ -651,7 +650,8 @@ int Tracer::handleSpecialCases(int status, shared_ptr<Registers> regs) {
 #endif
 	// If the tracee is going to die
 	if (status >> 8 == (SIGTRAP | (PTRACE_EVENT_EXIT << 8))) {
-		if (ptrace(PTRACE_GETEVENTMSG, this->tracedSpid, nullptr, &returnValue)) {
+		unsigned long terminationValue;
+		if (ptrace(PTRACE_GETEVENTMSG, this->tracedSpid, nullptr, &terminationValue)) {
 			PERROR("Ptrace error while trying to get the event message of this notification of SPID " + to_string(this->tracedSpid));
 			return Tracer::PTRACE_ERROR;
 		}
@@ -667,13 +667,14 @@ int Tracer::handleSpecialCases(int status, shared_ptr<Registers> regs) {
 		this->terminationState = make_shared<ProcessTermination>(this->tracedExecutable,
 		                                                         this->tracedPid,
 		                                                         this->tracedSpid,
-		                                                         returnValue);
+		                                                         terminationValue);
 		return Tracer::IMMINENT_EXIT;
 	}
 	if (ptrace(PTRACE_GETREGSET, this->tracedSpid, NT_PRSTATUS, regs->getIovec())) {
 		PERROR("Ptrace error occurred while trying to GETREGS from the process SPID " + to_string(this->tracedSpid));
 		return Tracer::PTRACE_ERROR;
 	}
+	int returnValue;
 	/* This option may not catch clone calls in all cases:
 		 - If the tracee calls clone with the CLONE_VFORK flag -> PTRACE_EVENT_VFORK will be delivered instead.
 		 - If the tracee calls clone with the exit signal set to SIGCHLD -> PTRACE_EVENT_FORK will be delivered. */
