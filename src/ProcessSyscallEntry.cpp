@@ -10,16 +10,16 @@
 using namespace std;
 
 // Set of System call numbers that may generate a child
-const set<int> ProcessSyscallEntry::childGeneratingSyscalls = {SYS_clone,
+const set<int> ProcessSyscallEntry::childGeneratingSyscalls = { SYS_clone,
 #ifdef ARCH_X8664
-																															 SYS_fork,
-																															 SYS_vfork
+																															  SYS_fork,
+																															  SYS_vfork
 #endif
 };
 // Set of System call numbers that terminates the tracee execution
-const set<int> ProcessSyscallEntry::exitSyscalls = {SYS_exit, SYS_exit_group };
+const set<int> ProcessSyscallEntry::exitSyscalls = { SYS_exit, SYS_exit_group };
 // Set of System call numbers that do not return, hence do not generate a notification at their exit
-const set<int> ProcessSyscallEntry::nonReturningSyscalls = {SYS_rt_sigreturn };
+const set<int> ProcessSyscallEntry::nonReturningSyscalls = { SYS_rt_sigreturn };
 // Returned when this ProcessState will NOT generate any child thread
 const int ProcessSyscallEntry::NO_CHILD = -1;
 // Returned when if this ProcessState succeed a child thread will be generated

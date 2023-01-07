@@ -12,7 +12,7 @@
 
 class ProcessTermination : public ProcessNotification {
 public:
-  ProcessTermination(std::string notification_origin, int pid, int spid, int value, int waitpid_status = -1);
+  ProcessTermination(std::string notificationOrigin, int pid, int spid, int returnValue, int waitpidStatus = -1);
   [[nodiscard]] int getExitStatus() const;
   [[nodiscard]] bool isSignaled() const;
   [[nodiscard]] int getTerminationSignal() const;

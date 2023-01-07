@@ -18,14 +18,11 @@
  */
 
 #include <algorithm>
-#include <cstring>
 #include <unistd.h>
 #include <assert.h>
 #include <sys/wait.h>
 #include <sys/ptrace.h>
 #include <errno.h>
-#include <sys/reg.h>
-#include <stddef.h>
 #include <signal.h>
 #include <vector>
 #include <iostream>
@@ -290,28 +287,11 @@ pid_t Tracer::getSpid() const {
  *                  Tracer::EXITED_ERROR   If the traced thread is not running.
  */
 int Tracer::handle(int status) {
-	assert(TracingManager::worker_spid == syscall(SYS_gettid));
+	assert(TracingManager::workerSpid == syscall(SYS_gettid));
 	assert(this->tracedSpid > 0 && this->tracedSpid < Tracer::MAX_PID);
 	assert(this->tracedPid > 0 && this->tracedPid < Tracer::MAX_PID);
-	// If this is a termination signal make a termination notification
-	if (WIFEXITED(status)) {
-		// TODO: Does this ever happen? It is expected that in this case handleTermination would be called
-		this->running = false;
-		this->attached = false;
-		if (this->entryState != nullptr) {
-			cout << "The following system call will never be completed:" << endl;
-			this->entryState->print();
-			this->entryState = nullptr;
-		}
-		this->terminationState = make_shared<ProcessTermination>(this->getExecutableName(),
-		                                                         this->tracedPid,
-		                                                         this->tracedSpid,
-		                                                         WEXITSTATUS(status),
-		                                                         status);
-		return EXITED_ERROR;
-	}
 	shared_ptr<Registers> regs = make_shared<Registers>();
-	int return_value;
+	int returnValue;
 	if (!this->running && status >> 8 == (SIGTRAP | (PTRACE_EVENT_EXEC << 8))) { // If this tracee is back from the death
 		this->running = true;
 		this->attached = true;
@@ -334,7 +314,7 @@ int Tracer::handle(int status) {
 		return Tracer::EXITED_ERROR;
 	}
 	assert(this->terminationState == nullptr);
-	switch (return_value = this->handleSpecialCases(status, regs)) {
+	switch (returnValue = this->handleSpecialCases(status, regs)) {
 		case Tracer::SYSCALL_HANDLED:
 			if (ptrace(PTRACE_SYSCALL, this->tracedSpid, nullptr, 0)) {
 				PERROR("Ptrace error occurred while trying to continue from a special caseof SPID " + to_string(this->tracedSpid));
@@ -344,7 +324,7 @@ int Tracer::handle(int status) {
 			return 0;
 		case Tracer::EXECVE_SYSCALL:
 			if (!this->syscallExit(status, regs)) {
-				return return_value;
+				return returnValue;
 			}
 			return Tracer::PTRACE_ERROR;
 		case Tracer::IMMINENT_EXIT:
@@ -352,15 +332,16 @@ int Tracer::handle(int status) {
 				PERROR("Ptrace error while trying to proceed from a termination notification of SPID " + to_string(this->tracedSpid));
 				return Tracer::PTRACE_ERROR;
 			}
-			return return_value;
+			return returnValue;
 		case Tracer::NOT_SPECIAL:
 			break;
 		default:
-			return return_value;
+			return returnValue;
 	}
 	// Only System call traps have bit 7 in the signal number
 	if (WSTOPSIG(status) != (SIGTRAP | 0x80)) {
 		if (this->handleSignal(status) == nullptr) {
+			// TODO: Create new ProcessNotification for signals
 			return Tracer::PTRACE_ERROR;
 		}
 		return 0;
@@ -381,7 +362,7 @@ int Tracer::handle(int status) {
  *                  Tracer::GENERIC_ERROR If this tracee is dead or it is not waiting for a green light.
  */
 int Tracer::proceed() {
-	assert(TracingManager::worker_spid == syscall(SYS_gettid));
+	assert(TracingManager::workerSpid == syscall(SYS_gettid));
 	assert(this->tracedSpid > 0 && this->tracedSpid < Tracer::MAX_PID);
 	assert(this->tracedPid > 0 && this->tracedPid < Tracer::MAX_PID);
 	if (!this->running) {
@@ -660,8 +641,7 @@ int Tracer::handleSpecialCases(int status, shared_ptr<Registers> regs) {
 	assert(this->attached);
 	assert(this->tracedPid > 0 && this->tracedPid < Tracer::MAX_PID);
 	assert(this->tracedSpid > 0 && this->tracedSpid < Tracer::MAX_PID);
-	int return_value;
-	unsigned long val;
+	int returnValue;
 #ifdef ARCH_AARCH64
 	// If the previous syscall is not generating an exit notification then this is an entry notification of a new syscall
 	if (this->entryState && ProcessSyscallEntry::nonReturningSyscalls.find(this->entryState->getSyscall()) != ProcessSyscallEntry::nonReturningSyscalls.end()) {
@@ -671,22 +651,23 @@ int Tracer::handleSpecialCases(int status, shared_ptr<Registers> regs) {
 #endif
 	// If the tracee is going to die
 	if (status >> 8 == (SIGTRAP | (PTRACE_EVENT_EXIT << 8))) {
-		if (ptrace(PTRACE_GETEVENTMSG, this->tracedSpid, nullptr, &val)) {
+		if (ptrace(PTRACE_GETEVENTMSG, this->tracedSpid, nullptr, &returnValue)) {
 			PERROR("Ptrace error while trying to get the event message of this notification of SPID " + to_string(this->tracedSpid));
 			return Tracer::PTRACE_ERROR;
 		}
-		cout << "The traced process " << this->tracedSpid << " is terminating with status: " << val << endl;
 		this->running = false;
 		this->attached = false;
 		if (this->entryState != nullptr) {
-			cout << "The following system call will never be completed: " << endl;
-			this->entryState->print();
+			if (this->entryState->getSyscall() != SYS_exit_group && this->entryState->getSyscall() != SYS_exit) {
+				cerr << "The following system call is not an exit and will never be completed" << endl;
+				this->entryState->print();
+			}
 			this->entryState = nullptr;
 		}
 		this->terminationState = make_shared<ProcessTermination>(this->tracedExecutable,
 		                                                         this->tracedPid,
 		                                                         this->tracedSpid,
-		                                                         val);
+		                                                         returnValue);
 		return Tracer::IMMINENT_EXIT;
 	}
 	if (ptrace(PTRACE_GETREGSET, this->tracedSpid, NT_PRSTATUS, regs->getIovec())) {
@@ -701,10 +682,10 @@ int Tracer::handleSpecialCases(int status, shared_ptr<Registers> regs) {
 	#ifdef ARCH_X8664
 		assert(regs->returnValue() == -ENOSYS);
 	#endif
-		return_value = this->syscallJump(regs);
+		returnValue = this->syscallJump(regs);
 		this->entryState->returnValue = regs->returnValue();
-		if (return_value < 0) {
-			return return_value;
+		if (returnValue < 0) {
+			return returnValue;
 		}
 		this->entryState->returnValue = regs->returnValue();
 		if (this->entryState->returnValue < 1 || this->entryState->returnValue >= Tracer::MAX_PID) {
@@ -713,17 +694,17 @@ int Tracer::handleSpecialCases(int status, shared_ptr<Registers> regs) {
 		// If the CLONE_THREAD option is specified means that the new thread will be in the same thread group of this tracee
 		if ((this->entryState->argument(0) & CLONE_THREAD) && (this->ptraceOptions & PTRACE_O_TRACECLONE)) {
 			this->entryState->childPid = this->tracedPid;
-			return_value = TracingManager::handle_children(*this, this->tracedPid, (pid_t) this->entryState->returnValue);
+			returnValue = TracingManager::handleChildren(*this, this->tracedPid, (pid_t) this->entryState->returnValue);
 		} else if (this->ptraceOptions & (PTRACE_O_TRACEFORK | PTRACE_O_TRACEVFORK)) {
 			this->entryState->childPid = (pid_t) this->entryState->returnValue;
-			return_value = TracingManager::handle_children(*this,
-			                                               (pid_t) this->entryState->returnValue,
-			                                               (pid_t) this->entryState->returnValue);
+			returnValue = TracingManager::handleChildren(*this,
+			                                             (pid_t) this->entryState->returnValue,
+			                                             (pid_t) this->entryState->returnValue);
 		}
-		if (!return_value) {
+		if (!returnValue) {
 			return Tracer::SYSCALL_HANDLED;
 		} else {
-			return return_value;
+			return returnValue;
 		}
 	}
 	if ((status >> 8 == (SIGTRAP | (PTRACE_EVENT_FORK << 8))) || (status >> 8 == (SIGTRAP | (PTRACE_EVENT_VFORK << 8)))) {
@@ -733,24 +714,24 @@ int Tracer::handleSpecialCases(int status, shared_ptr<Registers> regs) {
 	#elif defined(ARCH_AARCH64)
 		assert(regs->syscall() == SYS_clone);
 	#endif
-		return_value = this->syscallJump(regs);
+		returnValue = this->syscallJump(regs);
 		assert(this->entryState->getSyscall() == regs->syscall());
 		this->entryState->returnValue = regs->returnValue();
-		if (return_value < 0) {
-			return return_value;
+		if (returnValue < 0) {
+			return returnValue;
 		}
 		this->entryState->returnValue = regs->returnValue();
 		if (this->entryState->returnValue < 1 || this->entryState->returnValue >= Tracer::MAX_PID) {
 			return Tracer::NOT_SPECIAL;
 		}
 		this->entryState->childPid = (pid_t) this->entryState->returnValue;
-		return_value = TracingManager::handle_children(*this,
-		                                               (pid_t) this->entryState->returnValue,
-		                                               (pid_t) this->entryState->returnValue);
-		if (!return_value) {
+		returnValue = TracingManager::handleChildren(*this,
+		                                             (pid_t) this->entryState->returnValue,
+		                                             (pid_t) this->entryState->returnValue);
+		if (!returnValue) {
 			return Tracer::SYSCALL_HANDLED;
 		} else {
-			return return_value;
+			return returnValue;
 		}
 	}
 	if (status >> 8 == (SIGTRAP | (PTRACE_EVENT_EXEC << 8))) {
@@ -782,7 +763,7 @@ int Tracer::syscallEntry(int status, shared_ptr<Registers> regs) {
 	assert(this->tracedPid > 0 && this->tracedPid < Tracer::MAX_PID);
 	assert(this->tracedSpid > 0 && this->tracedSpid < Tracer::MAX_PID);
 	assert(!this->entryState);
-	assert(TracingManager::worker_spid == syscall(SYS_gettid));
+	assert(TracingManager::workerSpid == syscall(SYS_gettid));
 	assert(WIFSTOPPED(status) && WSTOPSIG(status) == (SIGTRAP | 0x80));
 	assert(!WIFEXITED(status));
 	this->exitState = nullptr;
@@ -805,8 +786,8 @@ int Tracer::syscallEntry(int status, shared_ptr<Registers> regs) {
 	// to extract it during the syscall entry and eventually overwrite it if this execve fails.
 	if (this->entryState->getSyscall() == SYS_execve) {
 		try {
-			TracingManager::add_possible_execve(this->tracedPid,
-			                                    this->extractString(this->entryState->argument(0), Tracer::MAXIMUM_PROCESS_NAME_LENGTH));
+			TracingManager::addPossibleExecve(this->tracedPid,
+			                                  this->extractString(this->entryState->argument(0), Tracer::MAXIMUM_PROCESS_NAME_LENGTH));
 		} catch (runtime_error& e) {
 			cerr << "Error while trying to retrieve the execve target program name: " << e.what() << endl;
 		}
@@ -825,7 +806,7 @@ int Tracer::syscallEntry(int status, shared_ptr<Registers> regs) {
  *                  Tracer::PTRACE_ERROR if a ptrace error occurred.
  */
 int Tracer::syscallExit(int status, shared_ptr<Registers> regs) {
-	assert(TracingManager::worker_spid == syscall(SYS_gettid));
+	assert(TracingManager::workerSpid == syscall(SYS_gettid));
 	assert(this->running);
 	assert(this->attached);
 	assert(this->tracedPid > 0 && this->tracedPid < Tracer::MAX_PID);
@@ -970,7 +951,7 @@ int Tracer::handleExecve(shared_ptr<Registers> regs) {
 	assert(this->tracedPid > 0 && this->tracedPid < Tracer::MAX_PID);
 	assert(this->tracedSpid > 0 && this->tracedSpid < Tracer::MAX_PID);
 	assert(this->tracedPid == this->tracedSpid);
-	cout << "New tracee executable name: " << TracingManager::possible_execves[this->tracedPid] << endl;
+	cout << "New tracee executable name: " << TracingManager::possibleExecves[this->tracedPid] << endl;
 	return this->syscallJump(regs) >= 0 ? 0 : Tracer::PTRACE_ERROR;
 }
 

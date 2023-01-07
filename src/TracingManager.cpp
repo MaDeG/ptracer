@@ -12,21 +12,21 @@
 using namespace std;
 
 // SPID of the ptrace syscall notifications receiver
-pid_t TracingManager::worker_spid = -1;
+pid_t TracingManager::workerSpid = -1;
 // Queue of tracers that are waiting to be initialised by the worker thread
-ConcurrentQueue<shared_ptr<Tracer>> TracingManager::attach_wait;
+ConcurrentQueue<shared_ptr<Tracer>> TracingManager::attachWait;
 // Global queue of notifications waiting for authorisation
-ConcurrentQueue<shared_ptr<ProcessNotification>> TracingManager::notification_queue;
+ConcurrentQueue<shared_ptr<ProcessNotification>> TracingManager::notificationQueue;
 // Associate every traced SPID with its Tracer
 map<pid_t, shared_ptr<Tracer>> TracingManager::tracers;
 // Queue of states that have been authorised to proceed
-ConcurrentQueue<shared_ptr<ProcessSyscallEntry>> TracingManager::authorised_tracees;
+ConcurrentQueue<shared_ptr<ProcessSyscallEntry>> TracingManager::authorisedTracees;
 // Map of possible execve target programs, that syscall gets executed multiple times trying multiple paths.
-map<pid_t, string> TracingManager::possible_execves;
+map<pid_t, string> TracingManager::possibleExecves;
 // Map of statuses associated with their originator SPID that haven't an associated Tracer (yet)
-map<pid_t, int> TracingManager::possible_children;
+map<pid_t, int> TracingManager::possibleChildren;
 // Callback function that will be called every time a new tracee is generated.
-function<void (pid_t, pid_t, pid_t)> TracingManager::child_callback = nullptr;
+function<void (pid_t, pid_t, pid_t)> TracingManager::childCallback = nullptr;
 // Defines what to do when a SIGUSR1 is received -> Handle TracingManager::authorised_tracees queue
 struct sigaction TracingManager::authorised_action;
 // Defines what to do when a SIGUSR2 is received -> Handle TracingManager::attach_wait queue
@@ -43,7 +43,7 @@ struct sigaction TracingManager::attach_action;
  */
 bool TracingManager::init(shared_ptr<Tracer> tracer) {
   if (tracer != nullptr) {
-    TracingManager::attach_wait.push(tracer);
+    TracingManager::attachWait.push(tracer);
   }
   if (TracingManager::tracers.empty()) {
     return TracingManager::signalhandler_install();
@@ -60,7 +60,7 @@ bool TracingManager::init(shared_ptr<Tracer> tracer) {
  *         has already been started.
  */
 bool TracingManager::start() {
-  if (TracingManager::worker_spid > 0) {
+  if (TracingManager::workerSpid > 0) {
     return false;
   }
   assert(TracingManager::tracers.empty());
@@ -76,7 +76,7 @@ bool TracingManager::start() {
  * @return A reference to the first ProcessState in the queue.
  */
 shared_ptr<ProcessNotification> TracingManager::nextNotification() {
-  return TracingManager::notification_queue.pop();
+  return TracingManager::notificationQueue.pop();
 }
 
 /**
@@ -93,14 +93,14 @@ bool TracingManager::authorize(shared_ptr<ProcessSyscallEntry> state) {
 		// Already authorised
 		return true;
 	}
-  assert(TracingManager::worker_spid > 0 && TracingManager::worker_spid < Tracer::MAX_PID);
-  assert(TracingManager::worker_spid != syscall(SYS_gettid));
+  assert(TracingManager::workerSpid > 0 && TracingManager::workerSpid < Tracer::MAX_PID);
+  assert(TracingManager::workerSpid != syscall(SYS_gettid));
   if (state == nullptr) {
     return true;
   }
-  TracingManager::authorised_tracees.push(state);
-  if (syscall(SYS_tkill, TracingManager::worker_spid, SIGUSR1)) {
-    PERROR("Cannot send a SIGUSR1 signal to " + to_string(TracingManager::worker_spid));
+  TracingManager::authorisedTracees.push(state);
+  if (syscall(SYS_tkill, TracingManager::workerSpid, SIGUSR1)) {
+    PERROR("Cannot send a SIGUSR1 signal to " + to_string(TracingManager::workerSpid));
     return false;
   }
   return true;
@@ -114,18 +114,18 @@ bool TracingManager::authorize(shared_ptr<ProcessSyscallEntry> state) {
  * @param tracer The Tracer that will be added.
  * @return True if the insertion was successful, False otherwise.
  */
-bool TracingManager::add_tracer(shared_ptr<Tracer> tracer) {
-  assert(TracingManager::worker_spid > 0 && TracingManager::worker_spid < Tracer::MAX_PID);
-  assert(TracingManager::worker_spid != syscall(SYS_gettid));
+bool TracingManager::addTracer(shared_ptr<Tracer> tracer) {
+  assert(TracingManager::workerSpid > 0 && TracingManager::workerSpid < Tracer::MAX_PID);
+  assert(TracingManager::workerSpid != syscall(SYS_gettid));
   assert(tracer != nullptr);
   if (TracingManager::tracers.empty()) {
     // TracingManager::run() will take care of this Tracer
-    TracingManager::attach_wait.push(tracer);
+    TracingManager::attachWait.push(tracer);
     return true;
   }
-  TracingManager::attach_wait.push(tracer);
-  if (syscall(SYS_tkill, TracingManager::worker_spid, SIGUSR2)) {
-    PERROR("Cannot send a SIGUSR2 signal to " + to_string(TracingManager::worker_spid));
+  TracingManager::attachWait.push(tracer);
+  if (syscall(SYS_tkill, TracingManager::workerSpid, SIGUSR2)) {
+    PERROR("Cannot send a SIGUSR2 signal to " + to_string(TracingManager::workerSpid));
     return false;
   }
   return true;
@@ -139,7 +139,7 @@ bool TracingManager::add_tracer(shared_ptr<Tracer> tracer) {
  * @return True if all the SIGKILL signals were successful delivered, False otherwise.
  */
 bool TracingManager::kill_process(int spid) {
-  assert(TracingManager::worker_spid > 0 && TracingManager::worker_spid < Tracer::MAX_PID);
+  assert(TracingManager::workerSpid > 0 && TracingManager::workerSpid < Tracer::MAX_PID);
   bool return_value = true;
   if (spid > 0) {
     if (TracingManager::tracers.find(spid) == TracingManager::tracers.end()) {
@@ -158,7 +158,7 @@ bool TracingManager::kill_process(int spid) {
  * 
  * @return True if the tracing is active, False otherwise.
  */
-bool TracingManager::is_running() {
+bool TracingManager::isRunning() {
   return !TracingManager::tracers.empty();
 }
 
@@ -168,8 +168,8 @@ bool TracingManager::is_running() {
  * 
  * @param child_callback The function that will be called every new tracee.
  */
-void TracingManager::set_new_tracee_callback(function<void (pid_t, pid_t, pid_t)> child_callback) {
-  TracingManager::child_callback = child_callback;
+void TracingManager::setNewTraceeCallback(function<void (pid_t, pid_t, pid_t)> child_callback) {
+  TracingManager::childCallback = child_callback;
 }
 
 /**
@@ -182,10 +182,10 @@ void TracingManager::set_new_tracee_callback(function<void (pid_t, pid_t, pid_t)
 void TracingManager::run() {
   pid_t spid;
   int status;
-  TracingManager::worker_spid = (pid_t) syscall(SYS_gettid);
+  TracingManager::workerSpid = (pid_t) syscall(SYS_gettid);
   shared_ptr<Tracer> first;
   do {
-    first = TracingManager::attach_wait.pop();
+    first = TracingManager::attachWait.pop();
   } while (first->init());
   assert(first->getSpid() > 0 && first->getSpid() < Tracer::MAX_PID);
   TracingManager::tracers[first->getSpid()] = move(first);
@@ -201,28 +201,28 @@ void TracingManager::run() {
 		if (!WIFSTOPPED(status)) {
 			cout << "Received signal not coming from ptrace" << endl;
 		} else if (!WIFEXITED(status)) {
-      if (!TracingManager::handle_syscall(spid, status)) {
+      if (!TracingManager::handleSyscall(spid, status)) {
         break;
       }
     } else {
       if (TracingManager::tracers.find(spid) != TracingManager::tracers.end()) {
         // Ptrace does not guarantee to always deliver a termination notification
         TracingManager::tracers[spid]->handle(status);
-        TracingManager::handle_termination(spid);
+	      TracingManager::handleTermination(spid);
       }
       cout << "Termination notification from child SPID: " << spid << endl;
     }
   } while (!TracingManager::tracers.empty());
-  if (!TracingManager::possible_children.empty()) {
+  if (!TracingManager::possibleChildren.empty()) {
     cout << "The following SPID has sent a notification but there was NOT a Tracer ready for them: ";
-    for (auto& i : TracingManager::possible_children) {
+    for (auto& i : TracingManager::possibleChildren) {
       cout << i.first << "  ";
     }
   }
-  TracingManager::notification_queue.push(nullptr);
-  if (!TracingManager::possible_children.empty()) {
+  TracingManager::notificationQueue.push(nullptr);
+  if (!TracingManager::possibleChildren.empty()) {
     cout << "There are received statuses that have not been matched with any traced thread: " << endl;
-    for (auto& i : TracingManager::possible_children) {
+    for (auto& i : TracingManager::possibleChildren) {
       cout << "Received from SPID: " << i.first << " status: " << i.second << endl;
     }
   }
@@ -235,15 +235,14 @@ void TracingManager::run() {
  * @param status The waitpid status received.
  * @return True if the syscall handle was successfull, False if an error occurred.
  */
-bool TracingManager::handle_syscall(pid_t spid, int status) {
+bool TracingManager::handleSyscall(pid_t spid, int status) {
   if (TracingManager::tracers.find(spid) == TracingManager::tracers.end()) {
     cerr << "Impossible to find a Tracer for SPID " << spid << endl;
     cerr << "The status received will be stored" << endl;
-    TracingManager::possible_children[spid] = status;
+    TracingManager::possibleChildren[spid] = status;
     return true;
   }
-  int t;
-  switch (t = TracingManager::tracers[spid]->handle(status)) {
+  switch (TracingManager::tracers[spid]->handle(status)) {
     case 0:
       // System call exit managed
       break;
@@ -255,13 +254,13 @@ bool TracingManager::handle_syscall(pid_t spid, int status) {
 			} else if (TracingManager::tracers[spid]->exitState) {
 			  SyscallDecoderMapper::decode(*TracingManager::tracers[spid]->exitState);
 		  }
-      TracingManager::notification_queue.push(TracingManager::tracers[spid]->getCurrentState());
+      TracingManager::notificationQueue.push(TracingManager::tracers[spid]->getCurrentState());
       break;
     case Tracer::EXECVE_SYSCALL:
-      TracingManager::handle_execve(spid);
+	    TracingManager::handleExecve(spid);
       break;
     case Tracer::IMMINENT_EXIT:
-      TracingManager::handle_termination(spid);
+	    TracingManager::handleTermination(spid);
       break;
     case Tracer::EXITED_ERROR:
       cout << "Impossible to let the tracee SPID " << spid << " proceed since it is not running" << endl;
@@ -283,14 +282,11 @@ bool TracingManager::handle_syscall(pid_t spid, int status) {
  * @param spid   The SPID which is terminating.
  * @param status The termination status of spid.
  */
-void TracingManager::handle_termination(pid_t spid) {
+void TracingManager::handleTermination(pid_t spid) {
   assert(spid > 0 && spid < Tracer::MAX_PID);
   assert(TracingManager::tracers.find(spid) != TracingManager::tracers.end());
   assert(!TracingManager::tracers[spid]->isTracing());
-  if (dynamic_pointer_cast<ProcessTermination>(TracingManager::tracers[spid]->getCurrentState()) == nullptr) {
-    //TracingManager::tracers[spid]->get_current_state()->print();
-  }
-  TracingManager::notification_queue.push(TracingManager::tracers[spid]->getCurrentState());
+  TracingManager::notificationQueue.push(TracingManager::tracers[spid]->getCurrentState());
   // Ptrace does not guarantee that a thread exit notification is always delivered
   if (TracingManager::tracers.erase(spid) != 1) {
     cerr << "Impossible to delete the SPID " << spid << " Tracer" << endl;
@@ -310,17 +306,17 @@ void TracingManager::handle_termination(pid_t spid) {
  *                  Tracer::UNWIND_ERROR if a libunwind initialisation error occurred.
  *                  Tracer::GENERIC_ERRO if an error occurred during the PIDs namespace conversion.
  */
-int TracingManager::handle_children(const Tracer& tracer, pid_t pid, pid_t spid) {
-  assert(TracingManager::worker_spid == syscall(SYS_gettid));
+int TracingManager::handleChildren(const Tracer& tracer, pid_t pid, pid_t spid) {
+  assert(TracingManager::workerSpid == syscall(SYS_gettid));
   assert(tracer.entryState != nullptr);
   int status;
   TracingManager::tracers[spid] = make_unique<Tracer>(tracer, pid, spid);
-  if (TracingManager::child_callback != nullptr) {
-    TracingManager::child_callback(tracer.getSpid(), pid, spid);
+  if (TracingManager::childCallback != nullptr) {
+    TracingManager::childCallback(tracer.getSpid(), pid, spid);
   }
-  if (TracingManager::possible_children.find(spid) != TracingManager::possible_children.end()) {
-    status = TracingManager::possible_children[spid];
-    TracingManager::possible_children.erase(spid);
+  if (TracingManager::possibleChildren.find(spid) != TracingManager::possibleChildren.end()) {
+    status = TracingManager::possibleChildren[spid];
+    TracingManager::possibleChildren.erase(spid);
     return TracingManager::tracers[spid]->init(status);
   }
   return TracingManager::tracers[spid]->init();
@@ -333,14 +329,14 @@ int TracingManager::handle_children(const Tracer& tracer, pid_t pid, pid_t spid)
  * 
  * @param pid The PID of the thread group which executed an execve.
  */
-void TracingManager::handle_execve(pid_t spid) {
-  assert(TracingManager::possible_execves.find(spid) != TracingManager::possible_execves.end());
-  assert(!TracingManager::possible_execves[spid].empty() && TracingManager::possible_execves[spid].size() < PATH_MAX);
+void TracingManager::handleExecve(pid_t spid) {
+  assert(TracingManager::possibleExecves.find(spid) != TracingManager::possibleExecves.end());
+  assert(!TracingManager::possibleExecves[spid].empty() && TracingManager::possibleExecves[spid].size() < PATH_MAX);
   int pid_to_reset = TracingManager::tracers[spid]->getPid();
-	TracingManager::tracers[spid]->setExecutableName(TracingManager::possible_execves[spid]);
+	TracingManager::tracers[spid]->setExecutableName(TracingManager::possibleExecves[spid]);
   TracingManager::tracers[spid]->entryState = nullptr;
   TracingManager::tracers[spid]->terminationState = nullptr;
-  cout << "The tracee for PID " << spid << " is changing executable file in " << TracingManager::possible_execves[spid] << " due to an execve" << endl;
+  cout << "The tracee for PID " << spid << " is changing executable file in " << TracingManager::possibleExecves[spid] << " due to an execve" << endl;
   for (auto& i : TracingManager::tracers) {
     assert(i.first == i.second->getSpid());
     // After an execve syscall only the thread group leader will be active so the one with PID == SPID
@@ -361,7 +357,7 @@ void TracingManager::handle_execve(pid_t spid) {
  * @return True if the signal was correctly installed, False otherwise.
  */
 bool TracingManager::signalhandler_install() {
-  TracingManager::authorised_action.sa_handler = &TracingManager::handle_authorised;
+  TracingManager::authorised_action.sa_handler = &TracingManager::handleAuthorised;
   if (sigemptyset(&TracingManager::authorised_action.sa_mask)) {
     PERROR("Impossible to set the signal handler mask for SIGUSR1");
     return false;
@@ -371,7 +367,7 @@ bool TracingManager::signalhandler_install() {
     PERROR("Impossible to install the signal handler for SIGUSR1");
     return false;
   }
-  TracingManager::attach_action.sa_handler = &TracingManager::handle_attach;
+  TracingManager::attach_action.sa_handler = &TracingManager::handleAttach;
   if (sigemptyset(&TracingManager::attach_action.sa_mask)) {
     PERROR("Impossible to set the signal handler mask for SIGUSR2");
     return false;
@@ -392,11 +388,11 @@ bool TracingManager::signalhandler_install() {
  * 
  * @param signal The signal that has triggered the execution of this method.
  */
-void TracingManager::handle_authorised(int signal) {
-  assert(TracingManager::worker_spid == syscall(SYS_gettid));
+void TracingManager::handleAuthorised(int signal) {
+  assert(TracingManager::workerSpid == syscall(SYS_gettid));
   assert(signal == SIGUSR1);
   shared_ptr<ProcessSyscallEntry> current_state;
-  while (TracingManager::authorised_tracees.try_pop(current_state)) {
+  while (TracingManager::authorisedTracees.try_pop(current_state)) {
     if (current_state->getTracer() == nullptr) {
       cout << "Impossible to find a Tracer for state: " << endl;
       current_state->print();
@@ -417,12 +413,12 @@ void TracingManager::handle_authorised(int signal) {
  * 
  * @param signal The signal that has triggered the execution of this method
  */
-void TracingManager::handle_attach(int signal) {
-  assert(TracingManager::worker_spid == syscall(SYS_gettid));
+void TracingManager::handleAttach(int signal) {
+  assert(TracingManager::workerSpid == syscall(SYS_gettid));
   assert(signal == SIGUSR2);
-  assert(!TracingManager::attach_wait.empty());
+  assert(!TracingManager::attachWait.empty());
   shared_ptr<Tracer> tracer;
-  while (TracingManager::attach_wait.try_pop(tracer)) {
+  while (TracingManager::attachWait.try_pop(tracer)) {
     assert(tracer->getSpid() > 0 && tracer->getSpid() < Tracer::MAX_PID);
     if (tracer->init()) {
       cerr << "Error during Tracer for SPID " << tracer->getSpid() << " initialisation" << endl;
@@ -441,7 +437,7 @@ void TracingManager::handle_attach(int signal) {
  * @param pid             The PID where the execve syscall took place.
  * @param executable_name The new executable name extracted from the tracee memory.
  */
-void TracingManager::add_possible_execve(int pid, string executable_name) {
-  TracingManager::possible_execves[pid] = executable_name;
+void TracingManager::addPossibleExecve(int pid, string executable_name) {
+  TracingManager::possibleExecves[pid] = executable_name;
   cout << "Possible execve for pid " << pid << ": " << executable_name << endl;
 }
