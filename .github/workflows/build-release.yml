@@ -86,6 +86,8 @@ jobs:
             ${{ secrets.LZMA_PRIVATE_SSH_KEY }}
       - name: Get Conan
         run: pip install conan
+      - name: Use new C++ ABI
+        run: conan profile update settings.compiler.libcxx=libstdc++11 default
       - name: Cache Conan Packages
         id: conan-aarch64-cache
         uses: actions/cache@v3
@@ -137,6 +139,8 @@ jobs:
             ${{ secrets.LZMA_PRIVATE_SSH_KEY }}
       - name: Get Conan
         uses: turtlebrowser/get-conan@main
+      - name: Use new C++ ABI
+        run: conan profile update settings.compiler.libcxx=libstdc++11 default
       - name: Cache Conan Packages
         id: conan-x86_64-android-cache
         uses: actions/cache@v3
