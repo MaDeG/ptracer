@@ -86,6 +86,8 @@ jobs:
             ${{ secrets.LZMA_PRIVATE_SSH_KEY }}
       - name: Get Conan
         run: pip install conan
+      - name: Initialize default Conan profile
+        run: conan profile new default --detect
       - name: Use new C++ ABI
         run: conan profile update settings.compiler.libcxx=libstdc++11 default
       - name: Cache Conan Packages
@@ -139,6 +141,8 @@ jobs:
             ${{ secrets.LZMA_PRIVATE_SSH_KEY }}
       - name: Get Conan
         uses: turtlebrowser/get-conan@main
+      - name: Initialize default Conan profile
+        run: conan profile new default --detect
       - name: Use new C++ ABI
         run: conan profile update settings.compiler.libcxx=libstdc++11 default
       - name: Cache Conan Packages
