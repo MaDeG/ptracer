@@ -44,7 +44,6 @@ std::vector<StackFrame> BacktracerImpl::unwind() {
 		}
 		//TODO: What should be relative PC?
 		frames.emplace_back(pc, 0, sp, string(functionName), offset);
-
 		//cout << function_name << " + " << offset << " @ " << pc << " SP: " << sp << endl;
 	} while (unw_step(&it) > 0 && frames.size() < BacktracerImpl::MAX_FRAMES);
 	return frames;

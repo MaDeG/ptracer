@@ -24,20 +24,19 @@ using namespace std;
  * Build a new process death notification.
  * The passed waitpid status must be a termination status.
  * 
- * @param notification_origin The executable name (with or without path) that has generated this notification
- * @param pid                 The Process ID of the thread that has generated this notification.
- * @param spid                The Thread ID of the thread that has generated this notification.
- * @param waitpid_status      The status obtained via a waitpid system call that has generated this notification.
- * @param return_value        The thread exit status.
- * @throws runtime_error if WIFEXITED(this->_waitpid_status) is not true.
+ * @param notificationOrigin The executable name (with or without path) that has generated this notification
+ * @param pid                The Process ID of the thread that has generated this notification.
+ * @param spid               The Thread ID of the thread that has generated this notification.
+ * @param returnValue        The thread exit status.
+ * @param waitpidStatus      The status obtained via a waitpid system call that has generated this notification.
  */
-ProcessTermination::ProcessTermination(string notification_origin,
+ProcessTermination::ProcessTermination(string notificationOrigin,
                                        int pid,
                                        int spid,
-                                       int waitpid_status,
-                                       int return_value) : ProcessNotification(notification_origin, pid, spid),
-                                                           waitpidStatus (waitpid_status),
-                                                           returnValue   (return_value)                       {
+                                       int returnValue,
+                                       int waitpidStatus) : ProcessNotification(notificationOrigin, pid, spid),
+                                                            waitpidStatus (waitpidStatus),
+                                                            returnValue (returnValue) {
 }
 
 /**

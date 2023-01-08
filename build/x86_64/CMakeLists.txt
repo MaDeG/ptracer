@@ -110,4 +110,4 @@ target_compile_options(ptracer-static PRIVATE ${CMAKE_C_FLAGS} ${EXTRA_FLAGS})
 add_compile_definitions(ARCH_X86_64)
 
 # Used to align with Boost's ABI
-add_compile_definitions(_GLIBCXX_USE_CXX11_ABI=0)
+add_compile_definitions(_GLIBCXX_USE_CXX11_ABI=1)
