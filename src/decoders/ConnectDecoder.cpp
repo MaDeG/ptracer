@@ -67,7 +67,7 @@ void ConnectDecoder::initFamilies() {
 
 std::string ConnectDecoder::inetToString(const unsigned short family, const in_addr& addr) {
 	if(family != AF_INET && family != AF_INET6) {
-		return (boost::format("%#016x") % addr.s_addr).str();
+		return (boost::format("%#018x") % addr.s_addr).str();
 	}
 	char address[16];
 	inet_ntop(family, &addr, address, 16);
@@ -78,13 +78,9 @@ ConnectCall ConnectDecoder::makeCall(const ProcessSyscallEntry& entry, sockaddr*
 	string family = ConnectDecoder::socketFamilies[addr->sa_family];
 	if (addr->sa_family == AF_INET || addr->sa_family == AF_INET6) {
 		struct sockaddr_in* sin = reinterpret_cast<sockaddr_in*>(addr);
-		return {family,
-            ntohs(sin->sin_port),
-            ConnectDecoder::inetToString(sin->sin_family, sin->sin_addr)};
+		return {family, ntohs(sin->sin_port), ConnectDecoder::inetToString(sin->sin_family, sin->sin_addr)};
 	} else if (addr->sa_family == AF_LOCAL) {
-		return {family,
-						0,
-						string(addr->sa_data)};
+		return {family, 0, string(addr->sa_data)};
 	} else {
 		return {family, 0, "Unhandled address"};
 	}

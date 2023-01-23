@@ -43,6 +43,6 @@ int ProcessSyscallExit::getSyscall() const {
 void ProcessSyscallExit::print() const {
 	cout << "------------------ SYSCALL EXIT START ------------------" << endl;
 	ProcessNotification::print();
-	cout << (boost::format("Return value: %#016x") % this->getReturnValue()).str() << endl;
+	cout << (boost::format("Return value: %#018x") % this->getReturnValue()).str() << endl;
 	cout << "------------------ SYSCALL EXIT STOP ------------------" << endl;
 }

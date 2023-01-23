@@ -12,6 +12,10 @@ map<pid_t, ProcessSyscallDecoderMapper> SyscallDecoderMapper::decoders;
  * @return The result of decoding the syscall or False if any error occurred.
  */
 bool SyscallDecoderMapper::decode(const ProcessSyscallEntry& syscall) {
+	if (!SyscallDecoderMapper::enabled) {
+		// TODO: Improve this
+		return true;
+	}
 	return SyscallDecoderMapper::decoders[syscall.getPid()].decode(syscall);
 }
 
@@ -22,6 +26,9 @@ bool SyscallDecoderMapper::decode(const ProcessSyscallEntry& syscall) {
  * @return The result of decoding the syscall or False if any error occurred.
  */
 bool SyscallDecoderMapper::decode(const ProcessSyscallExit& syscall) {
+	if (!SyscallDecoderMapper::enabled) {
+		return true;
+	}
 	return SyscallDecoderMapper::decoders[syscall.getPid()].decode(syscall);
 }
 
@@ -29,6 +36,9 @@ bool SyscallDecoderMapper::decode(const ProcessSyscallExit& syscall) {
  * Iterates over all the saved PIDs and prints a report for each of those.
  */
 void SyscallDecoderMapper::printReport() {
+	if (!SyscallDecoderMapper::enabled) {
+		return;
+	}
 	cout << "------------------ SYSCALL DECODERS REPORT START ------------------" << endl;
 	for (auto process : SyscallDecoderMapper::decoders) {
 		cout << "------------------ PID " << process.first << " START ------------------" << endl;

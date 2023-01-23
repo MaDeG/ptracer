@@ -12,6 +12,7 @@
 #include "dto/ProcessSyscallEntryDto.h"
 #include "Tracer.h"
 
+//TODO: Is a bimap really necessary? When is it necessary to retrieve the id given a ProcessSyscallEntry?
 typedef boost::bimap<unsigned int, ProcessSyscallEntryDTO> AssociationType;
 
 class Mapper {

@@ -11,6 +11,7 @@ public:
 	static bool decode(const ProcessSyscallEntry& syscall);
 	static bool decode(const ProcessSyscallExit& syscall);
 	static void printReport();
+	inline static bool enabled;
 private:
 	static std::map<pid_t, ProcessSyscallDecoderMapper> decoders;
 };

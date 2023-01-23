@@ -14,5 +14,5 @@ const iovec* Registers::getIovec() const {
  * @return The string representation of this object.
  */
 Registers::operator string() const {
-	return (boost::format("Registers = { PC: %#016x\tSP: %#016x\tRET: %#016x }") % this->pc() % this->sp() % this->returnValue()).str();
+	return (boost::format("Registers = { PC: %#018x\tSP: %#018x\tRET: %#018x }") % this->pc() % this->sp() % this->returnValue()).str();
 }

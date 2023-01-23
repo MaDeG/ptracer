@@ -26,6 +26,8 @@ std::vector<StackFrame> BacktracerImpl::unwind() {
 	vector<StackFrame> frames;
 	unw_cursor_t it;
 	unw_word_t sp, offset, pc;
+	unw_proc_info_t info;
+	unsigned long long relativePc = 0;
 	char functionName[BacktracerImpl::MAX_FUNCTION_NAME_LENGTH];
 	if (unw_init_remote(&it, this->_address_space, this->_info)) {
 		throw new runtime_error("Error during the remote cursor initialization for remote unwinding");
@@ -40,11 +42,14 @@ std::vector<StackFrame> BacktracerImpl::unwind() {
 		}
 		if (unw_get_proc_name(&it, functionName, BacktracerImpl::MAX_FUNCTION_NAME_LENGTH, &offset) != UNW_ESUCCESS) {
 			cerr << "Error during call backtrace retrieval: impossible to retrieve a function name" << endl;
-			sprintf(functionName, "%#016x", pc);
+			sprintf(functionName, "%#018x", pc);
 		}
-		//TODO: What should be relative PC?
-		frames.emplace_back(pc, 0, sp, string(functionName), offset);
-		//cout << function_name << " + " << offset << " @ " << pc << " SP: " << sp << endl;
+		if(unw_get_proc_info(&it, &info) == UNW_ESUCCESS) {
+			relativePc = pc - info.start_ip;
+		} else {
+			cerr << "Error during retrieval of function entry point" << endl;
+		}
+		frames.emplace_back(pc, relativePc, sp, string(functionName), offset);
 	} while (unw_step(&it) > 0 && frames.size() < BacktracerImpl::MAX_FRAMES);
 	return frames;
 }

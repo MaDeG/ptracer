@@ -71,6 +71,7 @@ Tracer::Tracer(const char* program,
 	}
 	if (follow_threads) {
 		// Receive an extra notification just before a clone syscall.
+		// TODO: Clone is used also for processes
 		this->ptraceOptions |= PTRACE_O_TRACECLONE;
 	}
 	if (ptrace_jail) {

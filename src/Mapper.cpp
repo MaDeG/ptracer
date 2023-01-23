@@ -183,18 +183,18 @@ unsigned int Mapper::find(const shared_ptr<ProcessSyscallEntry>& state) const {
 /**
  * It looks for an association number and return its associated ProcessSyscallEntry.
  * 
- * @param executableName    The executable name which association number is related to.
+ * @param executableName The executable name which association number is related to.
  * @param associationId The association number that will be searched.
  * @return The ProcessState associated with the specified key, nullptr if it does not exist.
  */
-shared_ptr<ProcessSyscallEntryDTO> Mapper::find(const string& executableName, int associationId) const {
+/*shared_ptr<ProcessSyscallEntryDTO> Mapper::find(const string& executableName, int associationId) const {
 	auto it = this->associations.find(executableName);
   if (it == this->associations.end()) {
     return nullptr;
   }
   AssociationType::left_map::const_iterator result = it->second.left.find(associationId);
   return result != it->second.left.end() ? make_shared<ProcessSyscallEntryDTO>(result->second) : nullptr;
-}
+}*/
 
 /**
  * It returns the number of associations inside the association map.

@@ -15,6 +15,7 @@ const string Launcher::RUN_OPT = "run";
 const string Launcher::FOLLOW_THREADS_OPT = "follow-threads";
 const string Launcher::FOLLOW_CHILDREN_OPT = "follow-children";
 const string Launcher::JAIL_OPT = "jail";
+const string Launcher::DECODERS_OPT = "decoders";
 const string Launcher::BACKTRACE_OPT = "backtrace";
 const string Launcher::AUTHORIZER_OPT = "authorizer";
 const string Launcher::LEARN_OPT = "learn";
@@ -44,6 +45,7 @@ Launcher::Launcher(int argc, const char** argv) {
 			(Launcher::FOLLOW_THREADS_OPT.c_str(), value<bool>()->default_value(true), "Trace also child threads")
 			(Launcher::FOLLOW_CHILDREN_OPT.c_str(), value<bool>()->default_value(true), "Trace also child processes")
 			(Launcher::JAIL_OPT.c_str(), value<bool>()->default_value(false), "Kill the traced process and all its children if ptracer is killed")
+			(Launcher::DECODERS_OPT.c_str(), value<bool>()->default_value(true), "Enables or disables system call decoders")
 			(Launcher::BACKTRACE_OPT.c_str(), value<bool>()->default_value(true), "Extract the full stacktrace that lead to a systemcall")
 			(Launcher::AUTHORIZER_OPT.c_str(), value<bool>()->default_value(false), "Enable or disables the Authorizer module and all its options")
 			(Launcher::LEARN_OPT.c_str(), value<bool>()->default_value(true), "Sets the Authorizer module in learning mode")
@@ -82,6 +84,7 @@ Launcher::Launcher(int argc, const char** argv) {
 	this->follow_threads = option_values[Launcher::FOLLOW_THREADS_OPT].as<bool>();
 	this->follow_children = option_values[Launcher::FOLLOW_CHILDREN_OPT].as<bool>();
 	this->tracee_jail = option_values[Launcher::JAIL_OPT].as<bool>();
+	SyscallDecoderMapper::enabled = option_values[Launcher::DECODERS_OPT].as<bool>();
 	this->backtrace = option_values[Launcher::BACKTRACE_OPT].as<bool>();
 	if (option_values[Launcher::AUTHORIZER_OPT].as<bool>()) {
 		if (option_values.count(Launcher::NFA_PATH_OPT) <= 0 || option_values.count(Launcher::ASSOCIATIONS_PATH_OPT) <= 0) {
