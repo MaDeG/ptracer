@@ -15,7 +15,7 @@ StackFrame::StackFrame(unsigned long long int pc,
 }
 
 StackFrame::operator std::string() const {
-	string result = (boost::format("PC %#016x Relative PC %#016x SP %016x") % this->pc % this->relativePc % this->sp).str();
+	string result = (boost::format("PC %#018x Relative PC %#018x SP %018x") % this->pc % this->relativePc % this->sp).str();
 	if (!this->functionName.empty()) {
 		result += (boost::format(" - %s @ %d") % this->functionName % this->functionOffset).str();
 	}

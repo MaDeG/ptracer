@@ -17,6 +17,7 @@ private:
 	static const std::string FOLLOW_THREADS_OPT;
 	static const std::string FOLLOW_CHILDREN_OPT;
 	static const std::string JAIL_OPT;
+	static const std::string DECODERS_OPT;
 	static const std::string BACKTRACE_OPT;
 	static const std::string AUTHORIZER_OPT;
 	static const std::string LEARN_OPT;

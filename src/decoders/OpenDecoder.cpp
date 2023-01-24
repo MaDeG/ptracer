@@ -45,7 +45,7 @@ void OpenDecoder::printReport() const {
 	cout << "------------------ OPEN DECODER START ------------------" << endl;
 	for (const PathFD& pathFd : this->paths) {
 		if (pathFd.fd >= 0) {
-			cout << "File Descriptor: " << pathFd.fd << " <--->" << pathFd.path << endl;
+			cout << "File Descriptor: " << pathFd.fd << " <---> " << pathFd.path << endl;
 		} else {
 			cout << "Attempt to open path: " << pathFd.path << " failed with error: " << pathFd.fd << endl;
 		}

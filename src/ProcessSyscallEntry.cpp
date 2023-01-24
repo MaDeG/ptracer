@@ -45,9 +45,10 @@ void ProcessSyscallEntry::print() const {
       cout << string(i) << endl;
     }
   }
+	// TODO: Move representation of paramteres and registers together in Registers to_string
 	cout << "Parameters = { ";
 	for (unsigned long long int i = 0; i < Registers::ARGS_COUNT; i++) {
-		cout << boost::format("%#016x\t") % this->argument(i);
+		cout << boost::format("%#018x\t") % this->argument(i);
 	}
 	cout << "}" << endl;
   if (this->regs != nullptr) {
