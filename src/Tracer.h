@@ -14,13 +14,11 @@
 #include <condition_variable>
 #include <boost/integer_traits.hpp>
 #include "Backtracer.h"
-#include "ProcessSyscallEntry.h"
-#include "ProcessSyscallExit.h"
 #include "Registers.h"
 #include "ProcessTermination.h"
+#include "ProcessSyscallEntry.h"
+#include "ProcessSyscallExit.h"
 #define MAX_SYSCALL_NUMBER 450  // TODO: To be dynamically acquired from Linux kernel headers
-
-class ProcessSyscallEntry;
 
 class Tracer {
   friend class TracingManager;
@@ -55,22 +53,22 @@ public:
   Tracer(const Tracer& tracer, const int pid, const int spid);
   ~Tracer();
   int killProcess(int signal = SIGKILL);
-  std::string getExecutableName() const;
+  [[nodiscard]] std::string getExecutableName() const;
   void setExecutableName(std::string executableName);
-  pid_t getPid() const;
-  pid_t getSpid() const;
-  std::shared_ptr<ProcessNotification> getCurrentState() const;
-  bool isTracing() const;
+  [[nodiscard]] pid_t getPid() const;
+  [[nodiscard]] pid_t getSpid() const;
+  [[nodiscard]] std::shared_ptr<ProcessNotification> getCurrentState() const;
+  [[nodiscard]] bool isTracing() const;
   int handle(int status);
   int proceed();
   int init(int status = -1);
   void set_options(bool follow_children, bool follow_threads, bool ptrace_jail, bool no_backtrace);
   void waitForAttach();
-	std::string extractString(unsigned long long int address, unsigned int maxLength) const;
-	char* extractBytes(unsigned long long int address, unsigned int maxLength) const;
+	[[nodiscard]] std::string extractString(unsigned long long int address, unsigned int maxLength) const;
+	[[nodiscard]] unsigned char* extractBytes(unsigned long long int address, unsigned int maxLength) const;
 
-private:
 	static const unsigned int MAXIMUM_PROCESS_NAME_LENGTH;
+private:
 	const std::unique_ptr<Backtracer> backtracer;
   std::string tracedExecutable;
   pid_t tracedPid = -1;
@@ -94,7 +92,7 @@ private:
   int syscallJump(std::shared_ptr<Registers> regs);
   int getBacktrace();
   int handleExecve(std::shared_ptr<Registers> regs);
-  std::shared_ptr<siginfo_t> handleSignal(int status) const;
+  [[nodiscard]] std::shared_ptr<siginfo_t> handleSignal(int status) const;
 };
 
 #endif // PTRACER_TRACER_H

@@ -4,6 +4,7 @@
 #include <iostream>
 #include <sys/syscall.h>
 #include "ReadWriteDecoder.h"
+#include "../Tracer.h"
 
 using namespace std;
 
@@ -42,7 +43,10 @@ bool ReadWriteDecoder::decode(const ProcessSyscallEntry& syscall) {
 		cerr << "Found potentially corrupted syscall parameters, read/write parameters will not be checked" << endl;
 		return false;
 	}
-	char* extracted = syscall.getTracer()->extractBytes(syscall.argument(1), syscall.argument(2));
+	char* extracted = (char*) syscall.getTracer()->extractBytes(syscall.argument(1), syscall.argument(2));
+	if (!extracted) {
+		return false;
+	}
 	out->write(extracted, syscall.argument(2));
 	out->flush();
 	delete[] extracted;

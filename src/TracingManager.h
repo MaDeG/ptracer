@@ -2,7 +2,9 @@
 #define PTRACER_TRACINGMANAGER_H
 #include "ConcurrentQueue.h"
 #include "ProcessNotification.h"
-#include "ProcessSyscallEntry.h"
+#include "Tracer.h"
+
+class ProcessSyscallEntry;
 
 //extern "C" __attribute__ ((visibility ("default")))
 class TracingManager {

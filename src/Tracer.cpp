@@ -17,7 +17,6 @@
  * Tracer::EXITED_ERROR:  When the tracee has generated a child death notification (WIFEXITED()) in an unexpected point.
  */
 
-#include <algorithm>
 #include <unistd.h>
 #include <assert.h>
 #include <sys/wait.h>
@@ -28,13 +27,12 @@
 #include <iostream>
 #include <string.h>
 #include <memory>
-#include <stdlib.h>
-#include <sys/types.h>
 #include <sys/syscall.h>
 #include <elf.h>
 #include <future>
 #include "Backtracer.h"
 #include "Launcher.h"
+#include "SyscallDecoderMapper.h"
 #include "SyscallNameResolver.h"
 #include "Tracer.h"
 #include "TracingManager.h"
@@ -169,7 +167,7 @@ Tracer::Tracer(const Tracer& tracer, const int pid, const int spid) : tracedExec
  * The Tracer destructor must manually destroy the Backtracer instance.
  */
 Tracer::~Tracer() {
-	cout << "Tracer of PID " << this->tracedPid << " SPID: " << this->tracedSpid << " is being deleted" << endl;
+	//cout << "Tracer of PID " << this->tracedPid << " SPID: " << this->tracedSpid << " is being deleted" << endl;
 }
 
 /**
@@ -530,7 +528,10 @@ string Tracer::extractString(unsigned long long int address, unsigned int maxLen
 	return resultStr;
 }
 
-char* Tracer::extractBytes(unsigned long long int address, unsigned int maxLength) const {
+unsigned char* Tracer::extractBytes(unsigned long long int address, unsigned int maxLength) const {
+	if (maxLength <= 0 || address <= 0) {
+		return nullptr;
+	}
 	assert(maxLength > 0 && address > 0);
 	assert(this->running);
 	assert(this->attached);
@@ -540,14 +541,14 @@ char* Tracer::extractBytes(unsigned long long int address, unsigned int maxLengt
 		long value;
 		char chars[sizeof(long)];
 	} chunk;
-	char* buffer = new char[maxLength];
+	unsigned char* buffer = new unsigned char[maxLength];
 	unsigned int i = 0;
 	errno = 0;
 	do {
 		chunk.value = ptrace(PTRACE_PEEKDATA, this->tracedSpid, address + i, nullptr);
 		if (errno) {
 			PERROR("Error while extracting bytes from SPID " + to_string(this->tracedSpid));
-			throw new runtime_error("Impossible to retrieve data from tracee memory");
+			return nullptr;
 		}
 		memcpy(buffer + i, chunk.chars, min(maxLength - i, (unsigned int) sizeof(chunk)));
 		i += sizeof(chunk);
@@ -680,7 +681,7 @@ int Tracer::handleSpecialCases(int status, shared_ptr<Registers> regs) {
 		 - If the tracee calls clone with the CLONE_VFORK flag -> PTRACE_EVENT_VFORK will be delivered instead.
 		 - If the tracee calls clone with the exit signal set to SIGCHLD -> PTRACE_EVENT_FORK will be delivered. */
 	if (status >> 8 == (SIGTRAP | (PTRACE_EVENT_CLONE << 8))) {
-		assert(regs->syscall() == SYS_clone);
+		assert(ProcessSyscallEntry::childGeneratingSyscalls.find(regs->syscall()) != ProcessSyscallEntry::childGeneratingSyscalls.end());
 	#ifdef ARCH_X8664
 		assert(regs->returnValue() == -ENOSYS);
 	#endif
@@ -689,7 +690,6 @@ int Tracer::handleSpecialCases(int status, shared_ptr<Registers> regs) {
 		if (returnValue < 0) {
 			return returnValue;
 		}
-		this->entryState->returnValue = regs->returnValue();
 		if (this->entryState->returnValue < 1 || this->entryState->returnValue >= Tracer::MAX_PID) {
 			return Tracer::NOT_SPECIAL;
 		}
@@ -710,13 +710,18 @@ int Tracer::handleSpecialCases(int status, shared_ptr<Registers> regs) {
 		}
 	}
 	if ((status >> 8 == (SIGTRAP | (PTRACE_EVENT_FORK << 8))) || (status >> 8 == (SIGTRAP | (PTRACE_EVENT_VFORK << 8)))) {
+		assert(ProcessSyscallEntry::childGeneratingSyscalls.find(regs->syscall()) != ProcessSyscallEntry::childGeneratingSyscalls.end());
 	#ifdef ARCH_X8664
-		assert(regs->syscall() == SYS_fork || regs->syscall() == SYS_vfork || regs->syscall() == SYS_clone);
 		assert(regs->returnValue() == -ENOSYS);
-	#elif defined(ARCH_AARCH64)
-		assert(regs->syscall() == SYS_clone);
 	#endif
-		returnValue = this->syscallJump(regs);
+		// TODO: Double check this in all platforms...
+		// Also clone should have the resulting pid extracted via GETEVENTMSG
+		//returnValue = this->syscallJump(regs);
+		pid_t childSpid = -1;
+		if (ptrace(PTRACE_GETEVENTMSG, this->tracedSpid, nullptr, &childSpid)) {
+			PERROR("Ptrace error while trying to get the event message of this notification of SPID " + to_string(this->tracedSpid));
+			return Tracer::PTRACE_ERROR;
+		}
 		assert(this->entryState->getSyscall() == regs->syscall());
 		this->entryState->returnValue = regs->returnValue();
 		if (returnValue < 0) {
@@ -726,10 +731,8 @@ int Tracer::handleSpecialCases(int status, shared_ptr<Registers> regs) {
 		if (this->entryState->returnValue < 1 || this->entryState->returnValue >= Tracer::MAX_PID) {
 			return Tracer::NOT_SPECIAL;
 		}
-		this->entryState->childPid = (pid_t) this->entryState->returnValue;
-		returnValue = TracingManager::handleChildren(*this,
-		                                             (pid_t) this->entryState->returnValue,
-		                                             (pid_t) this->entryState->returnValue);
+		this->entryState->childPid = childSpid;
+		returnValue = TracingManager::handleChildren(*this, childSpid, childSpid);
 		if (!returnValue) {
 			return Tracer::SYSCALL_HANDLED;
 		} else {
@@ -794,6 +797,8 @@ int Tracer::syscallEntry(int status, shared_ptr<Registers> regs) {
 			cerr << "Error while trying to retrieve the execve target program name: " << e.what() << endl;
 		}
 	}
+	// Syscall decoding needs to happen here since it might require extracting memory from the tracee and that can be done only from the tracer SPID
+	SyscallDecoderMapper::decode(*this->entryState.get());
 	//TODO: Renae following Enum since the queue will include also exit notifications
 	return Tracer::WAIT_FOR_AUTHORISATION;
 }
@@ -837,7 +842,10 @@ int Tracer::syscallExit(int status, shared_ptr<Registers> regs) {
 	}
 	// TODO: Maybe put also the return regs in the exit notification
 	this->exitState = make_shared<ProcessSyscallExit>(this->tracedExecutable, this->tracedPid, this->tracedSpid, regs);
+	this->exitState->tracer = TracingManager::tracers[this->tracedSpid];
 	assert(regs->returnValue() != -ENOSYS);                        // In a real scenario this is possible but not in debug mode
+	// Syscall decoding needs to happen here since it might require extracting memory from the tracee and that can be done only from the tracer SPID
+	SyscallDecoderMapper::decode(*this->exitState.get());
 	if (ptrace(PTRACE_SYSCALL, this->tracedSpid, nullptr, 0)) {
 		PERROR("Ptrace error occurred while trying to continue from the syscall number " + to_string(this->entryState->getSyscall()) +
 		       " exit notification of SPID " + to_string(this->tracedSpid));
@@ -899,7 +907,7 @@ int Tracer::syscallJump(shared_ptr<Registers> regs) {
 		PERROR("Ptrace error while trying to GETREGS after a syscall jump in SPID " + to_string(this->tracedSpid));
 		return Tracer::PTRACE_ERROR;
 	}
-	cout << "Jumped syscall number: " << regs->syscall() << " Return value: " << regs->returnValue() << " SPID: " << this->tracedSpid << endl;
+	//cout << "Jumped syscall number: " << regs->syscall() << " Return value: " << regs->returnValue() << " SPID: " << this->tracedSpid << endl;
 	return 0;
 }
 

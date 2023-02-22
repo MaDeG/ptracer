@@ -3,6 +3,7 @@
 #include <iostream>
 #include <sys/syscall.h>
 #include "ConnectDecoder.h"
+#include "../Tracer.h"
 
 using namespace std;
 
@@ -10,7 +11,7 @@ unordered_map<unsigned short, std::string> ConnectDecoder::socketFamilies;
 
 bool ConnectDecoder::decode(const ProcessSyscallEntry& syscall) {
 	// TODO: Malicious tracees could set very big length to try to make the tracer crash
-	char* extractedBytes = syscall.getTracer()->extractBytes(syscall.argument(1), syscall.argument(2));
+	unsigned char* extractedBytes = syscall.getTracer()->extractBytes(syscall.argument(1), syscall.argument(2));
 	struct sockaddr* addr = reinterpret_cast<sockaddr*>(extractedBytes);
 	this->connectCalls.push_back(ConnectDecoder::makeCall(syscall, addr));
 	delete[] extractedBytes;

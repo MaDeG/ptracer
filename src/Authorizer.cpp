@@ -2,16 +2,13 @@
 #include <amore++/finite_automaton.h>
 #include <amore_alf_glue.h>
 #include <libalf/basic_string.h>
-#include <libalf/conjecture.h>
-#include <asm/unistd.h>
 #include <memory>
 #include <string>
 #include <streambuf>
-#include <sstream>
-#include <sys/syscall.h>
 #include "Authorizer.h"
 #include "Mapper.h"
 #include "Launcher.h"
+#include "ProcessSyscallExit.h"
 #include "ProcessTermination.h"
 
 using namespace std;
@@ -200,6 +197,16 @@ void Authorizer::buildAutomata() {
     //this->automaton->determinize();
     //this->automaton->minimize();
     cout << "Automaton construction finished" << endl;
+		cout << "Number of states: " << this->automata->get_alphabet_size() << endl;
+		// TODO: Reimplement the NFA library, DOT generation is very slow and this is a horrible way of finding the total number of transactions
+		int transitionNumber = 0;
+	  for (const auto& item : transitions) {
+		  for (const auto& item : item.second) {
+				transitionNumber += item.second.size();
+			}
+		}
+	  cout << "Number of transitions: " << transitionNumber << endl;
+		cout << "Final states: " << finals.size() << endl;
     if (!this->save()) {
       ERROR("Error occurred while saving the automata in " + this->graphPath);
     }
@@ -249,7 +256,7 @@ bool Authorizer::addTransition(shared_ptr<ProcessSyscallEntry> state) {
   bool new_state = false;
   assert(this->automata != nullptr);
   map< int, map<int, set<int> > > pre_transitions, transitions;
-  this->automata->get_transition_maps(pre_transitions, transitions);
+  this->automata->get_transition_maps(pre_transitions, transitions);  // TODO: Very time consuming operation, shall be optimized
   new_state = this->associations.find(state) == Mapper::NOT_FOUND;
   label = this->associations.insert(state);
   for (const int& i : this->currentStates[state->getSpid()]) {
@@ -535,7 +542,7 @@ void Authorizer::checkFinalStates() {
 }
 
 
-void Authorizer::printSet(set<int>& store) const {
+void Authorizer::printSet(set<int>& store) {
   cout << "( ";
   for (const int i : store) {
     cout << i << " ";
