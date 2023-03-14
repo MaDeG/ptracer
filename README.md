@@ -91,9 +91,10 @@ During every execution the observed System Calls will be analyzed and a summary 
 Currently, the following System Calls Decoders have been implemented:
 
 - ConnectDecoder: Fetches the parameters passed to the `connect` system call, in order to see all the socket opened by the tracee.
-- OpenDecoder: Fetches the parameters passed to the `open` system call, in order to see all the files opened by the tracee.
+- FileDecoder: Fetches the parameters passed to the `open` system call, in order to see all the files opened by the tracee.
 - PtraceDecoder: Decodes `ptrace` system calls in order to detect if the tracee is aware to be traced or if it is tracing another process.
 - ReadWriteDecoder: Saves all the bytes that have been read/write from or to file descriptors, it enables to intercept every external communication.
+- BinderDecoder: Decodes the ioctl syscall when used to communicate with the Android Binder IPC
 
 More decoders will be implemented in the future.
 

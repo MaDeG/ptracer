@@ -26,6 +26,8 @@ jobs:
             ${{ secrets.LZMA_PRIVATE_SSH_KEY }}
       - name: Get Conan
         uses: turtlebrowser/get-conan@main
+        with:
+          version: 1.59.0
       - name: Cache Conan Packages
         id: conan-aarch64-cache
         uses: actions/cache@v3
@@ -85,7 +87,7 @@ jobs:
             ${{ secrets.LIBZIPARCHIVE_PRIVATE_SSH_KEY }}
             ${{ secrets.LZMA_PRIVATE_SSH_KEY }}
       - name: Get Conan
-        run: pip install conan
+        run: pip install --force-reinstall "conan==1.59.0"
       - name: Initialize default Conan profile
         run: conan profile new default --detect
       - name: Use new C++ ABI
@@ -141,6 +143,8 @@ jobs:
             ${{ secrets.LZMA_PRIVATE_SSH_KEY }}
       - name: Get Conan
         uses: turtlebrowser/get-conan@main
+        with:
+          version: 1.59.0
       - name: Initialize default Conan profile
         run: conan profile new default --detect
       - name: Use new C++ ABI

@@ -11,6 +11,7 @@ using namespace std;
 
 // Set of System call numbers that may generate a child
 const set<int> ProcessSyscallEntry::childGeneratingSyscalls = { SYS_clone,
+																																SYS_clone3,
 #ifdef ARCH_X8664
 																															  SYS_fork,
 																															  SYS_vfork

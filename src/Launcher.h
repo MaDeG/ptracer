@@ -24,6 +24,7 @@ private:
 	static const std::string NFA_PATH_OPT;
 	static const std::string DOT_PATH_OPT;
 	static const std::string ASSOCIATIONS_PATH_OPT;
+	static const std::string TRACEE_NAME;
 	pid_t traced_pid = -1;
 	char** tracee_argv = nullptr;
 	bool follow_threads;
@@ -32,6 +33,7 @@ private:
 	bool backtrace;
 	std::unique_ptr<Authorizer> authorizer;
 	std::string dotPath;
+	std::string tracee_name;
 	void processSyscalls() const;
 };
 

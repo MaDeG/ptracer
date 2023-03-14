@@ -2,6 +2,7 @@
 #include <iostream>
 #include <utility>
 #include "ProcessSyscallExit.h"
+#include "TracingManager.h"
 
 using namespace std;
 
@@ -45,4 +46,8 @@ void ProcessSyscallExit::print() const {
 	ProcessNotification::print();
 	cout << (boost::format("Return value: %#018x") % this->getReturnValue()).str() << endl;
 	cout << "------------------ SYSCALL EXIT STOP ------------------" << endl;
+}
+
+shared_ptr<Tracer> ProcessSyscallExit::getTracer() const {
+	return this->tracer;
 }

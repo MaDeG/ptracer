@@ -1,9 +1,9 @@
-#include <iostream>
-#include "ConnectDecoder.h"
-#include "OpenDecoder.h"
-#include "PtraceDecoder.h"
-#include "ReadWriteDecoder.h"
+#include "BinderDecoder.h"
+#include "ExecveDecoder.h"
+#include "FileDecoder.h"
 #include "ProcessSyscallDecoderMapper.h"
+#include "PtraceDecoder.h"
+#include "SocketDecoder.h"
 #include "../SyscallNameResolver.h"
 
 using namespace std;
@@ -12,10 +12,14 @@ using namespace std;
  * Asks to all the Decoders to register themselves to this instance.
  */
 ProcessSyscallDecoderMapper::ProcessSyscallDecoderMapper() {
-	ConnectDecoder::registerAt(*this);
-	OpenDecoder::registerAt(*this);
+	SocketDecoder::registerAt(*this);
+	FileDecoder::registerAt(*this);
 	PtraceDecoder::registerAt(*this);
-	ReadWriteDecoder::registerAt(*this);
+	ExecveDecoder::registerAt(*this);
+#ifdef ARCH_AARCH64
+	BinderDecoder::registerAt(*this);
+#endif
+
 }
 
 /**
@@ -74,7 +78,7 @@ bool ProcessSyscallDecoderMapper::decode(const ProcessSyscallExit& syscall) {
  * Iterates over all the registered syscalls decoders and prints a report for each of those.
  */
 void ProcessSyscallDecoderMapper::printReport() const {
-	for (auto& syscall : this->decoders) {
+ 	for (auto& syscall : this->decoders) {
 		syscall->printReport();
 	}
 }

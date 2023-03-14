@@ -114,3 +114,5 @@ target_compile_options(ptracer-static PRIVATE ${CMAKE_C_FLAGS} ${EXTRA_FLAGS})
 
 # Needed for the usage of the correct data structures to extract process information via ptrace
 add_compile_definitions(ARCH_AARCH64)
+# Needed to activate the Binder decoder
+add_compile_definitions(ARCH_AARCH64 ANDROID)

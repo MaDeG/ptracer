@@ -199,7 +199,7 @@ void TracingManager::run() {
       break;
     }
 		if (!WIFSTOPPED(status)) {
-			cout << "Received signal not coming from ptrace" << endl;
+			cerr << "Received signal not coming from ptrace" << endl;
 		} else if (!WIFEXITED(status)) {
       if (!TracingManager::handleSyscall(spid, status)) {
         break;
@@ -247,13 +247,7 @@ bool TracingManager::handleSyscall(pid_t spid, int status) {
       // System call exit managed
       break;
     case Tracer::WAIT_FOR_AUTHORISATION:
-			// Syscall decoding needs to happen here since it might require extracting memory from the tracee and that can be done only from the tracer SPID
-			// TODO: The if below should not be here
-			if (TracingManager::tracers[spid]->entryState) {
-				SyscallDecoderMapper::decode(*TracingManager::tracers[spid]->entryState);
-			} else if (TracingManager::tracers[spid]->exitState) {
-			  SyscallDecoderMapper::decode(*TracingManager::tracers[spid]->exitState);
-		  }
+			// TODO: Implement a way to only notify the Authoriser without waiting for authroisation
       TracingManager::notificationQueue.push(TracingManager::tracers[spid]->getCurrentState());
       break;
     case Tracer::EXECVE_SYSCALL:

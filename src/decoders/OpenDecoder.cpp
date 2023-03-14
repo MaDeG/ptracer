@@ -1,7 +1,8 @@
 #include <iostream>
 #include <sys/syscall.h>
-#include "OpenDecoder.h"
 #include <sys/ioctl.h>
+#include "OpenDecoder.h"
+#include "../Tracer.h"
 
 using namespace std;
 

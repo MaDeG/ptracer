@@ -22,6 +22,7 @@ const string Launcher::LEARN_OPT = "learn";
 const string Launcher::NFA_PATH_OPT = "nfa";
 const string Launcher::DOT_PATH_OPT = "dot";
 const string Launcher::ASSOCIATIONS_PATH_OPT = "associations";
+const string Launcher::TRACEE_NAME = "name";
 
 void terminationHandler(int signum) {
 	cout << "Termination signal received" << endl;
@@ -52,6 +53,7 @@ Launcher::Launcher(int argc, const char** argv) {
 			(Launcher::NFA_PATH_OPT.c_str(), value<string>(), "Specifies the path where the NFA managed by the Auhtorizer is present or will be created")
 			(Launcher::DOT_PATH_OPT.c_str(), value<string>(), "Specifies the path where the DOT representation of the NFA managed by the Auhtorizer will be created")
 			(Launcher::ASSOCIATIONS_PATH_OPT.c_str(), value<string>(), "Specifies the path where the associations between state IDs and System Calls is present or will be created by the Authorizer")
+			(Launcher::TRACEE_NAME.c_str(), value<string>(), "Name of the executable to attach to, used only when a PID is specified")
 	;
 	parsed_options parsed = command_line_parser(argc, argv).options(description)
 																												 .allow_unregistered()
@@ -93,7 +95,16 @@ Launcher::Launcher(int argc, const char** argv) {
 		this->authorizer = make_unique<Authorizer>(option_values[Launcher::NFA_PATH_OPT].as<string>(),
 		                                           option_values[Launcher::ASSOCIATIONS_PATH_OPT].as<string>(),
 		                                           option_values[Launcher::LEARN_OPT].as<bool>());
-		this->dotPath = option_values[Launcher::DOT_PATH_OPT].as<string>();
+		if (option_values.count(Launcher::DOT_PATH_OPT) > 0) {
+			this->dotPath = option_values[Launcher::DOT_PATH_OPT].as<string>();
+		}
+	}
+	if (option_values.count(Launcher::PID_OPT) > 0) {
+		if (option_values.count(Launcher::TRACEE_NAME) > 0) {
+			this->tracee_name = option_values[Launcher::TRACEE_NAME].as<string>();
+		} else {
+			this->tracee_name = "attached-process-" + to_string(this->traced_pid);
+		}
 	}
 }
 
@@ -126,7 +137,7 @@ void Launcher::start() {
 																						 this->backtrace));
 	} else {
 		cout << "PID to trace: " << this->traced_pid << endl;
-		TracingManager::init(make_shared<Tracer>("attached-process-" + to_string(this->traced_pid),
+		TracingManager::init(make_shared<Tracer>(this->tracee_name,
 																			       this->traced_pid,
 																						 this->follow_children,
 																						 this->follow_threads,
@@ -140,11 +151,29 @@ void Launcher::start() {
 
 void Launcher::processSyscalls() const {
 	shared_ptr<ProcessNotification> notification;
+	map<pid_t, unsigned long long> timestamps;
 	while ((notification = TracingManager::nextNotification()) != nullptr) {
 		// TODO: There should be no need to cast down
 		// TODO: Find a better way to register syscalls to the Authorizer module as well as the Decoders
 		shared_ptr<ProcessSyscallEntry> syscall = dynamic_pointer_cast<ProcessSyscallEntry>(notification);
 		notification->print();
+
+		/*
+		// Part for time checks
+		if (syscall) {
+			//cout << "Entry, PID:" << syscall->getSpid() << " " << syscall->getTimestamp() << endl;
+			auto it = timestamps.find(syscall->getSpid());
+			if (it != timestamps.end()) {
+				cout << syscall->getTimestamp() - it->second << endl;
+			}
+		} else {
+			shared_ptr<ProcessSyscallExit> exit = dynamic_pointer_cast<ProcessSyscallExit>(notification);
+			if (exit) {
+				//cout << "Exit, PID:" << exit->getSpid() << " " << exit->getTimestamp() << endl;
+				timestamps[exit->getSpid()] = exit->getTimestamp();
+			}
+		}*/
+
 		if (this->authorizer) {
 			this->authorizer->process(notification);
 		} else if (syscall) {

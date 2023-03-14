@@ -46,7 +46,7 @@ private:
   bool handleUnauthorised(std::shared_ptr<ProcessNotification> state);
   bool handleNonFinal(std::shared_ptr<ProcessNotification> state);
   void checkFinalStates();
-  void printSet(std::set<int>& store) const;
+  static void printSet(std::set<int>& store) ;
 };
 
 #endif /* PTRACER_AUTHORIZER_H */

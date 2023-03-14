@@ -2,9 +2,10 @@
 #define PTRACER_PROCESSSYSCALLENTRY
 #include <memory>
 #include <set>
-#include "Tracer.h"
+#include <vector>
 #include "Registers.h"
 #include "ProcessNotification.h"
+#include "StackFrame.h"
 
 class TracingManager;
 class Tracer;
