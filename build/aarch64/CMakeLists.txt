@@ -47,7 +47,7 @@ set(LIBALF_DIR ${CMAKE_BINARY_DIR}/libalf)
 # Hack to retrieve the Android NDK compiler and pass it to Libalf Makefile, to be removed when a new automata library will be implemented
 string(REGEX REPLACE "-$" "${ANDROID_NATIVE_API_LEVEL}-${CMAKE_ANDROID_NDK_TOOLCHAIN_VERSION}" LIBALF_CC_COMPILER ${CMAKE_CXX_ANDROID_TOOLCHAIN_PREFIX})
 set(LIBALF_CXX_COMPILER "${LIBALF_CC_COMPILER}++")
-ExternalProject_Add(libalf-src GIT_REPOSITORY git@github.com:MaDeG/libalf.git
+ExternalProject_Add(libalf-src GIT_REPOSITORY https://github.com/MaDeG/libalf.git
                                GIT_TAG master
                                BUILD_IN_SOURCE TRUE
                                CONFIGURE_COMMAND ""

@@ -36,7 +36,7 @@ conan_basic_setup()
 
 include(ExternalProject)
 set(LIBALF_DIR ${CMAKE_BINARY_DIR}/libalf)
-ExternalProject_Add(libalf-src GIT_REPOSITORY git@github.com:MaDeG/libalf.git
+ExternalProject_Add(libalf-src GIT_REPOSITORY https://github.com/MaDeG/libalf.git
                                GIT_TAG master
                                BUILD_IN_SOURCE TRUE
                                CONFIGURE_COMMAND ""
